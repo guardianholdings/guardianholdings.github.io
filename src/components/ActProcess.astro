@@ -1,0 +1,146 @@
+---
+/**
+ * ACT 03 — PROCESS. The concept made literal: the four steps are already
+ * labelled Signal / Read / Commit / Hold in the source copy, so the pinned
+ * horizontal track *is* the signal chain. One panel per step; the rail beneath
+ * fills as the chain locks.
+ *
+ * data-refresh-priority is explicit so this pin is always measured before the
+ * PROVIDE pin further down the document, whatever order the modules import in.
+ */
+import SectionOpener from './SectionOpener.astro';
+import { PROCESS } from '../data/content';
+---
+<section
+  class="process"
+  id="process"
+  data-act="3"
+  data-hscroll
+  data-refresh-priority="2"
+  aria-labelledby="process-title"
+>
+  <div class="process__stage act" data-tunnel>
+    <SectionOpener
+      id="process-title"
+      word={PROCESS.word}
+      index={3}
+      compact
+      kicker={PROCESS.kicker}
+      text={PROCESS.lede}
+    />
+
+    <div class="process__meta">
+      <h3 class="h-section process__heading" data-anim="lines">{PROCESS.heading}</h3>
+      <p class="readout process__counter">
+        <span data-hscroll-index>01</span> — 0{PROCESS.steps.length} · Step
+      </p>
+    </div>
+
+    <div class="process__viewport">
+      <ol class="process__track" data-hscroll-track>
+        {PROCESS.steps.map((step, i) => (
+          <li class="step">
+            <span class="readout step__idx">{String(i + 1).padStart(3, '0')}</span>
+            <span class="step__readout">{step.readout}</span>
+            <h4 class="step__name">{step.name}</h4>
+            <p class="step__line">{step.line}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+
+    <div class="process__rail"><i data-hscroll-rail></i></div>
+  </div>
+</section>
+
+<style>
+  .process { position: relative; }
+  /* A pinned section only ever shows its first viewport-height, so the
+     whole composition — opener, track and rail — has to fit inside one
+     screen. Anything below the fold is invisible for the entire pin. */
+  .process__stage {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: clamp(76px, 9vh, 96px);
+  }
+
+  .process__meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 32px;
+    margin-bottom: clamp(20px, 2.5vw, 32px);
+  }
+  /* Not .h-section here: at full size the heading alone costs the panels a
+     third of their height. */
+  .process__heading {
+    max-width: 26ch;
+    font-size: clamp(20px, 2.2vw, 32px) !important;
+    line-height: 1.1;
+  }
+
+  .process__viewport { overflow: hidden; }
+  /* Below 768px nothing is pinned; the track scrolls natively instead. */
+  @media (max-width: 767px) {
+    .process__viewport { overflow-x: auto; scroll-snap-type: x mandatory; }
+  }
+
+  .process__track {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: clamp(24px, 3vw, 48px);
+    width: max-content;
+  }
+
+  .step {
+    flex: none;
+    width: clamp(280px, 30vw, 420px);
+    border-top: 1px solid var(--hairline-strong);
+    padding-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-snap-align: start;
+  }
+  .step__idx { color: var(--ink-dim); }
+  /* The four words that name the concept. */
+  .step__readout {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--signal-hi);
+  }
+  .step__name {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(22px, 2.6vw, 36px);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    margin: 0;
+  }
+  .step__line {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--ink-muted);
+  }
+
+  .process__rail {
+    margin-top: clamp(20px, 2.5vw, 32px);
+    height: 1px;
+    background: var(--hairline);
+  }
+  .process__rail i {
+    display: block;
+    height: 1px;
+    width: 100%;
+    background: var(--signal);
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+</style>

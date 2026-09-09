@@ -1,0 +1,165 @@
+/* ── SIGNAL tokens ────────────────────────────────────────────────────────
+   Warm near-black ground, bone ink, one hot accent in two steps of the same
+   hue: --signal for graphic marks and fills, --signal-hi wherever the colour
+   has to carry text (it clears 5.3:1 on the ground; --signal alone is 2.7:1
+   and must never be used for type).
+   ------------------------------------------------------------------------ */
+
+/* Registering --snr lets the engine store it as a number rather than a token
+   stream, and makes it interpolable in transitions. */
+@property --snr {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+:root {
+  /* Ground and ink */
+  --bg: #0a0907;
+  --bg-raised: #121010;
+  --ink: #ede8de;
+  --ink-muted: #8a837a;
+  --ink-dim: #55504a;
+
+  /* The accent */
+  --signal: #b32017;
+  --signal-hi: #e8503f;
+  --signal-dim: #4a1410;
+
+  /* Hairlines */
+  --hairline: rgba(237, 232, 222, 0.14);
+  --hairline-strong: rgba(237, 232, 222, 0.28);
+
+  /* Type */
+  --font-display: 'Archivo Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
+  --font-mono: var(--font-mono-src), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --dur-fast: 240ms;
+  --dur-base: 800ms;
+  --dur-slow: 1400ms;
+
+  /* Layout */
+  --gutter: 48px;
+  --hud-h: 34px;
+  --measure: 46ch;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --gutter: 20px;
+  }
+}
+
+/* ── The bone ground ──────────────────────────────────────────────────────
+   Two acts invert to bone. The palette is NOT the dark one lightened: the
+   contrast order genuinely reverses. Measured against each ground:
+
+     token         on #0A0907   on #F4F1EA
+     --ink            16.30        1.00     <- unusable, must flip
+     --ink-muted       5.32        3.07     <- demoted to recessive
+     --ink-dim         2.50        6.53     <- promoted to primary body
+     --signal          2.97        5.48     <- becomes text-safe
+     --signal-hi       5.36        3.04     <- FAILS as text, must darken
+
+   So the dark ground's rule ("--signal-hi carries text, --signal never does")
+   inverts exactly, and the bone pack swaps which of the two is the text colour.
+   ------------------------------------------------------------------------ */
+/* The cavity, for CSS. --res is the RMS modal displacement (how hard the thing
+   is swinging), --lock is how near the scroll's drive frequency has come to a
+   mode. Registered so they interpolate as numbers rather than as tokens. */
+@property --res {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+@property --lock {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/* Fraction of the viewport currently covered by an inverted act's panel.
+   Published by ground.ts as a real AREA fraction, because in the shaft a bone
+   act is a lit rectangle standing at some depth, not a full-width band. */
+@property --bone-cover {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+@property --gg {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+:root {
+  --bone: #f4f1ea;
+  --bone-raised: #eae6dd;
+  --bone-ink: #14130f;
+  --bone-ink-muted: #55504a;
+  --bone-ink-dim: #8a837a;
+  --bone-signal: #b32017;
+  --bone-signal-hi: #94170f;
+  --bone-hairline: rgba(20, 19, 15, 0.16);
+  --bone-hairline-strong: rgba(20, 19, 15, 0.3);
+}
+
+/* Content inside an inverted act. Authored statically in the markup, never
+   toggled at runtime — word.ts and scramble.ts snapshot computed colours at
+   init, so the value has to be correct before they ever look. */
+[data-ground='bone'] {
+  /* The act paints its own ground. It used to be a separate fixed sheet clipped
+     to the section's document box; in the shaft the act IS a panel standing at
+     a depth, so it simply has a background — and it arrives out of the dark as
+     a lit rectangle, which is a better entrance than the wipe ever was. */
+  background: var(--bone);
+  /* Not decoration — this line is what makes the inversion work. `color` is an
+     inherited property, and what descendants inherit is body's *computed* bone
+     value, not the var() reference. Without re-declaring it here, every element
+     that does not itself say `color: var(--ink)` (the statement heading, most
+     body copy) stays bone-on-bone at 1.08:1. */
+  color: var(--ink);
+  --bg: var(--bone);
+  --bg-raised: var(--bone-raised);
+  --ink: var(--bone-ink);
+  --ink-muted: var(--bone-ink-muted);
+  --ink-dim: var(--bone-ink-dim);
+  --signal: var(--bone-signal);
+  --signal-hi: var(--bone-signal-hi);
+  --signal-dim: #e3c9c4;
+  --hairline: var(--bone-hairline);
+  --hairline-strong: var(--bone-hairline-strong);
+}
+
+/* Fixed chrome. Each layer sets its own --gg (how bone ITS band currently is)
+   and inherits this one pack, so there is exactly one place that knows how a
+   token interpolates between the two grounds. */
+.gh-reground,
+/* The HUD scrims are pseudo-elements: they can set --gg but cannot be given the
+   class, so they have to be named here or they stay near-black over a bone
+   act — two dark bars across the top and bottom of the screen. */
+.hud::before,
+.hud::after {
+  --bg: color-mix(in srgb, #0a0907, var(--bone) calc(var(--gg) * 100%));
+  --ink: color-mix(in srgb, #ede8de, var(--bone-ink) calc(var(--gg) * 100%));
+  --ink-muted: color-mix(in srgb, #8a837a, var(--bone-ink-muted) calc(var(--gg) * 100%));
+  --ink-dim: color-mix(in srgb, #55504a, var(--bone-ink-dim) calc(var(--gg) * 100%));
+  --signal: color-mix(in srgb, #b32017, var(--bone-signal) calc(var(--gg) * 100%));
+  --signal-hi: color-mix(in srgb, #e8503f, var(--bone-signal-hi) calc(var(--gg) * 100%));
+  --hairline: color-mix(in srgb, rgba(237, 232, 222, 0.14), var(--bone-hairline) calc(var(--gg) * 100%));
+  --hairline-strong: color-mix(in srgb, rgba(237, 232, 222, 0.28), var(--bone-hairline-strong) calc(var(--gg) * 100%));
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-signal: var(--signal);
+  --color-signal-hi: var(--signal-hi);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}

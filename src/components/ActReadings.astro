@@ -1,0 +1,94 @@
+---
+/**
+ * ACT 04 — READINGS. Four gauges. Each reading gets a 24-tick scale with a
+ * single needle; the needles are drawn in on enter, so the act resolves into
+ * four instruments all pointing the same way.
+ */
+import SectionOpener from './SectionOpener.astro';
+import { READINGS } from '../data/content';
+
+const TICKS = 24;
+/** Where each needle settles, as a fraction of the scale. Deliberately not
+    identical — four instruments reading the same subject, not one repeated. */
+const NEEDLE = [0.78, 0.86, 0.92, 0.7];
+---
+<section class="act readings" id="readings" data-act="4" aria-labelledby="readings-title">
+  <div class="stage" data-tunnel>
+    <SectionOpener
+      id="readings-title"
+      word={READINGS.word}
+      index={4}
+      kicker={READINGS.kicker}
+      text={READINGS.text}
+    />
+
+    <ol class="readings__list">
+      {READINGS.items.map((item, i) => (
+        <li class="reading" data-anim="fade-up">
+          <span class="readout reading__idx">{String(i + 1).padStart(3, '0')}</span>
+
+          <div class="reading__body">
+            <h4 class="reading__title">{item.title}</h4>
+            <p class="reading__line">{item.line}</p>
+          </div>
+
+          <svg class="reading__gauge" viewBox="0 0 240 40" fill="none" aria-hidden="true" data-anim="draw">
+            {Array.from({ length: TICKS }).map((_, t) => (
+              <line
+                x1={4 + t * (232 / (TICKS - 1))}
+                y1={t % 6 === 0 ? 12 : 20}
+                x2={4 + t * (232 / (TICKS - 1))}
+                y2="28"
+                stroke="currentColor"
+                stroke-width="1"
+              />
+            ))}
+            <line
+              class="reading__needle"
+              x1={4 + NEEDLE[i] * 232}
+              y1="4"
+              x2={4 + NEEDLE[i] * 232}
+              y2="36"
+              stroke-width="2"
+            />
+          </svg>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .readings__list { list-style: none; margin: 0; padding: 0; }
+
+  .reading {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 1fr) minmax(200px, 260px);
+    gap: 32px;
+    align-items: center;
+    padding-block: clamp(28px, 3.5vw, 48px);
+    border-top: 1px solid var(--hairline);
+  }
+  .reading:last-child { border-bottom: 1px solid var(--hairline); }
+
+  .reading__idx { color: var(--signal-hi); align-self: start; padding-top: 6px; }
+
+  .reading__title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(24px, 2.6vw, 38px);
+    letter-spacing: -0.028em;
+    line-height: 1.08;
+    margin: 0 0 10px;
+  }
+  .reading__line { margin: 0; font-size: 13.5px; line-height: 1.7; color: var(--ink-muted); max-width: 54ch; }
+
+  .reading__gauge { width: 100%; height: auto; color: var(--ink-dim); }
+  .reading__needle { stroke: var(--signal); }
+
+  @media (max-width: 900px) {
+    .reading { grid-template-columns: 1fr; gap: 14px; }
+    .reading__idx { padding-top: 0; }
+    .reading__gauge { max-width: 260px; }
+  }
+</style>

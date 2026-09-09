@@ -1,0 +1,84 @@
+---
+/**
+ * ACT 02 — PHILOSOPHY. The largest typographic moment on the site. The
+ * statement gets a full screen to itself with nothing competing, then the four
+ * principles run underneath as a ruled list.
+ */
+import SectionOpener from './SectionOpener.astro';
+import { PHILOSOPHY } from '../data/content';
+---
+<section class="act philosophy" id="philosophy" data-invert data-ground="bone" data-act="2" aria-labelledby="philosophy-title">
+  <div class="stage" data-tunnel>
+    <SectionOpener
+      id="philosophy-title"
+      word={PHILOSOPHY.word}
+      index={2}
+      kicker={PHILOSOPHY.kicker}
+      text={PHILOSOPHY.lede}
+    />
+
+    <blockquote class="philosophy__statement">
+      <p class="h-statement" data-anim="lines">{PHILOSOPHY.statement}</p>
+    </blockquote>
+
+    <p class="body philosophy__body" data-anim="lines">{PHILOSOPHY.body}</p>
+
+    <h3 class="h-section philosophy__heading" data-anim="lines">{PHILOSOPHY.principlesHeading}</h3>
+
+    <ol class="philosophy__list">
+      {PHILOSOPHY.principles.map((p, i) => (
+        <li class="principle" data-anim="fade-up">
+          <span class="readout principle__idx">{String(i + 1).padStart(3, '0')}</span>
+          <h4 class="principle__title">{p.title}</h4>
+          <p class="principle__line">{p.line}</p>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .philosophy__statement {
+    margin: 0 0 clamp(40px, 6vw, 88px);
+    padding-block: clamp(40px, 8vh, 96px);
+    max-width: 100%;
+  }
+  .philosophy__statement .h-statement { max-width: 18ch; }
+
+  .philosophy__body { margin-bottom: clamp(80px, 10vw, 152px); }
+
+  .philosophy__heading { max-width: 18ch; margin-bottom: clamp(28px, 3.5vw, 48px); }
+
+  .philosophy__list { list-style: none; margin: 0; padding: 0; }
+
+  .principle {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 22ch) minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+    padding-block: clamp(24px, 3vw, 40px);
+    border-top: 1px solid var(--hairline);
+  }
+  .principle:last-child { border-bottom: 1px solid var(--hairline); }
+  .principle__idx { color: var(--signal-hi); padding-top: 4px; }
+  .principle__title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(22px, 2.4vw, 34px);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0;
+  }
+  .principle__line {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--ink-muted);
+    max-width: 52ch;
+  }
+
+  @media (max-width: 900px) {
+    .principle { grid-template-columns: 1fr; gap: 12px; }
+    .principle__idx { padding-top: 0; }
+  }
+</style>

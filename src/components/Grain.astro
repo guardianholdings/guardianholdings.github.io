@@ -1,0 +1,52 @@
+---
+/**
+ * Film grain. Opacity is driven purely by CSS from --snr (see global.css), so
+ * the page visibly denoises as it resolves. The only JS is re-seeding the
+ * turbulence so the grain crawls; that is skipped on low-tier devices and
+ * under reduced motion, where a static tile is indistinguishable at this size.
+ */
+---
+<svg class="grain" aria-hidden="true" focusable="false">
+  <filter id="grain-filter">
+    <feTurbulence
+      type="fractalNoise"
+      baseFrequency="0.82"
+      numOctaves="3"
+      stitchTiles="stitch"
+      result="noise"
+    />
+    <feColorMatrix type="saturate" values="0" />
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grain-filter)" />
+</svg>
+
+<script>
+  import { deviceTier, motionAllowed } from '../lib/motion-policy';
+
+  if (motionAllowed() && deviceTier() !== 'low') {
+    const turbulence = document.querySelector<SVGFETurbulenceElement>('#grain-filter feTurbulence');
+    if (turbulence) {
+      let raf = 0;
+      let last = 0;
+      // ~8fps. Faster reads as video noise; slower reads as a still texture.
+      const INTERVAL = 125;
+
+      const tick = (now: number) => {
+        if (now - last >= INTERVAL) {
+          last = now;
+          turbulence.setAttribute('seed', String((Math.random() * 1000) | 0));
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          cancelAnimationFrame(raf);
+        } else {
+          raf = requestAnimationFrame(tick);
+        }
+      });
+    }
+  }
+</script>

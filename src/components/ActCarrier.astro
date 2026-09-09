@@ -1,0 +1,109 @@
+---
+/**
+ * ACT 00 — CARRIER.
+ *
+ * The opening frame. Both display words arrive as static and decode; the field
+ * behind them is at maximum noise. This is the only act that is not introduced
+ * by a SectionOpener, because it *is* the introduction.
+ */
+import { HERO, COMPANY } from '../data/content';
+
+const ADVANCE = 0.72;
+const fit = (w: string) => (w.length * ADVANCE).toFixed(2);
+---
+<section class="carrier" id="carrier" data-act="0" aria-labelledby="carrier-title">
+  <div class="carrier__stage" data-tunnel>
+    <p class="readout carrier__standfirst" data-anim="scramble">{HERO.standfirst}</p>
+
+    <h1 class="carrier__title" id="carrier-title">
+      <span class="h-hero carrier__word carrier__word--a" data-anim="scramble" style={`--word-fit:${fit(HERO.words[0])}`}>{HERO.words[0]}</span>
+      <span class="h-hero carrier__word carrier__word--b" data-anim="scramble" style={`--word-fit:${fit(HERO.words[1])}`}>{HERO.words[1]}</span>
+    </h1>
+
+    <p class="carrier__eyebrow readout" data-anim="scramble">{HERO.eyebrow}</p>
+
+    <p class="carrier__line" data-anim="lines">{HERO.line}</p>
+
+    {/* Both doors and their numbers, above the fold. The act above this line is
+        identity; a stranger needs information, and without this slot neither a
+        founder nor an investor is addressed for another full act. */}
+    <p class="carrier__sub" data-anim="lines">{HERO.sub}</p>
+
+    <div class="carrier__foot">
+      <p class="readout">{COMPANY.coords}</p>
+      <p class="readout carrier__cue" data-anim="scramble">{HERO.scrollCue}</p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .carrier {
+    position: relative;
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    padding-inline: var(--gutter);
+    /* Asymmetric on purpose: the bottom has to clear both the HUD's scrim band
+       and the sound toggle, which sit on the same line at the foot of every
+       viewport. */
+    padding-block: clamp(88px, 12vh, 140px) clamp(132px, 18vh, 190px);
+  }
+
+  .carrier__stage { width: 100%; }
+
+  .carrier__standfirst { margin: 0 0 clamp(24px, 4vh, 48px); }
+
+  /* Two words, opposite corners of the measure — the composition carried over
+     from the previous build, which was the one part of it that read well. */
+  .carrier__title {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .carrier__word {
+    display: block;
+    font-size: min(
+      clamp(56px, 13vw, 200px),
+      calc((100vw - 2 * var(--gutter)) / var(--word-fit))
+    );
+  }
+  .carrier__word--b { align-self: flex-end; text-align: right; }
+
+  .carrier__eyebrow {
+    margin: clamp(24px, 4vh, 44px) 0 0;
+    color: var(--ink-dim);
+  }
+
+  .carrier__line {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(20px, 2.2vw, 30px);
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin: clamp(20px, 3vh, 36px) 0 0;
+    max-width: 24ch;
+  }
+
+  .carrier__sub {
+    font-family: var(--font-mono);
+    font-size: clamp(11px, 1.05vw, 13px);
+    line-height: 1.75;
+    letter-spacing: 0.04em;
+    color: var(--ink-muted);
+    margin: clamp(14px, 2vh, 22px) 0 0;
+    max-width: 46ch;
+  }
+
+  .carrier__foot {
+    margin-top: clamp(40px, 8vh, 96px);
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .carrier__cue { color: var(--signal-hi); }
+
+  @media (max-width: 767px) {
+    .carrier__word--b { align-self: flex-start; text-align: left; }
+  }
+</style>

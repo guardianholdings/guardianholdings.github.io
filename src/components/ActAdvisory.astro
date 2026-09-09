@@ -1,0 +1,110 @@
+---
+/**
+ * ACT 07 — MANDATE. The investor door. Three facts, four strategies, then the
+ * regulatory statement and risk notice in full — both are reproduced verbatim
+ * and deliberately not shrunk into fine print.
+ */
+import SectionOpener from './SectionOpener.astro';
+import { ADVISORY } from '../data/content';
+---
+<section class="act advisory" id="advisory" data-invert data-ground="bone" data-act="7" aria-labelledby="advisory-title">
+  <div class="stage" data-tunnel>
+    <SectionOpener
+      id="advisory-title"
+      word={ADVISORY.word}
+      index={7}
+      kicker={ADVISORY.kicker}
+      text={ADVISORY.text}
+    />
+
+    <h3 class="h-statement advisory__heading" data-anim="lines">{ADVISORY.heading}</h3>
+    <p class="lede advisory__lede" data-anim="lines">{ADVISORY.lede}</p>
+
+    <ul class="advisory__facts" data-anim-group>
+      {ADVISORY.facts.map((fact, i) => (
+        <li class="fact" data-anim="fade-up">
+          <span class="readout fact__idx">{String(i + 1).padStart(2, '0')}</span>
+          <span class="num fact__value">{fact.value}</span>
+          <span class="mono fact__label">{fact.label}</span>
+          <span class="fact__note">{fact.note}</span>
+        </li>
+      ))}
+    </ul>
+
+    <h4 class="h-section advisory__sub" data-anim="lines">{ADVISORY.strategiesHeading}</h4>
+    <p class="body advisory__sublede" data-anim="lines">{ADVISORY.strategiesLede}</p>
+
+    <ol class="advisory__strategies">
+      {ADVISORY.strategies.map((s, i) => (
+        <li class="strategy" data-anim="fade-up">
+          <span class="readout strategy__idx">{String(i + 1).padStart(3, '0')}</span>
+          <div>
+            <span class="strategy__tag">{s.tag}</span>
+            <h5 class="strategy__title">{s.title}</h5>
+            <p class="strategy__line">{s.line}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+
+    <div class="advisory__reg">
+      <h4 class="h-section advisory__sub" data-anim="lines">{ADVISORY.regulationHeading}</h4>
+      <p class="body advisory__regbody" data-anim="lines">{ADVISORY.regulation}</p>
+      <p class="advisory__risk">{ADVISORY.risk}</p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .advisory__heading { max-width: 16ch; margin-bottom: clamp(20px, 2.5vw, 32px); }
+  .advisory__lede { margin-bottom: clamp(56px, 7vw, 96px); }
+
+  .advisory__facts {
+    list-style: none; margin: 0 0 clamp(80px, 10vw, 144px); padding: 0;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px;
+    border-top: 1px solid var(--hairline); padding-top: 32px;
+  }
+  .fact { display: flex; flex-direction: column; gap: 10px; }
+  .fact__idx { color: var(--signal-hi); }
+  .fact__value { font-size: clamp(40px, 6vw, 88px); }
+  .fact__label { color: var(--ink); }
+  .fact__note { font-size: 12px; line-height: 1.5; color: var(--ink-dim); max-width: 26ch; }
+
+  .advisory__sub { max-width: 20ch; margin-bottom: 20px; }
+  .advisory__sublede { margin-bottom: clamp(32px, 4vw, 56px); }
+
+  .advisory__strategies { list-style: none; margin: 0 0 clamp(80px, 10vw, 144px); padding: 0; }
+  .strategy {
+    display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 32px;
+    padding-block: clamp(24px, 3vw, 40px);
+    border-top: 1px solid var(--hairline);
+  }
+  .strategy:last-child { border-bottom: 1px solid var(--hairline); }
+  .strategy__idx { color: var(--ink-dim); }
+  .strategy__tag {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--signal-hi);
+  }
+  .strategy__title {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: clamp(22px, 2.4vw, 34px); letter-spacing: -0.028em; line-height: 1.1;
+    margin: 8px 0 12px;
+  }
+  .strategy__line { margin: 0; font-size: 13.5px; line-height: 1.7; color: var(--ink-muted); max-width: 62ch; }
+
+  .advisory__reg { border-top: 1px solid var(--hairline-strong); padding-top: clamp(32px, 4vw, 56px); }
+  .advisory__regbody { max-width: 68ch; margin-bottom: 28px; }
+  .advisory__risk {
+    font-family: var(--font-mono); font-size: 11px; line-height: 1.7;
+    /* --ink-muted, not --ink-dim: the recessive step fails contrast on both
+       grounds (2.50:1 dark / 3.07:1 bone) and this is the risk disclosure. */
+    letter-spacing: 0.04em; color: var(--ink-muted);
+    max-width: 76ch; margin: 0;
+    border-left: 1px solid var(--signal); padding-left: 20px;
+  }
+
+  @media (max-width: 900px) {
+    .advisory__facts { grid-template-columns: 1fr; }
+    .strategy { grid-template-columns: 1fr; gap: 12px; }
+  }
+</style>

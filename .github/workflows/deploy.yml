@@ -1,0 +1,70 @@
+# Build the site and publish it to GitHub Pages.
+#
+# Pages serves from a public repository on the free plan, so this repo holds
+# the site source and nothing else: the admin tool, the superseded root site
+# and the design notes stay off GitHub entirely.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. A queued run supersedes the one before it, but a run
+# already publishing is left to finish rather than cancelled half-way.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The deploy is gated on green. A red build publishes nothing.
+      - run: pnpm test
+      - run: pnpm check
+
+      - run: pnpm build
+        env:
+          PUBLIC_CONTACT_ENDPOINT: ${{ vars.PUBLIC_CONTACT_ENDPOINT }}
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+
+      # Deliberately absent until the cutover. While there is no CNAME file,
+      # the site stays reachable at guardianholdings.github.io for staging;
+      # the moment one exists, GitHub redirects that URL to the custom domain.
+      # Set the CUSTOM_DOMAIN repository variable to switch it on.
+      - name: Custom domain
+        if: ${{ vars.CUSTOM_DOMAIN != '' }}
+        run: echo "${{ vars.CUSTOM_DOMAIN }}" > dist/CNAME
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

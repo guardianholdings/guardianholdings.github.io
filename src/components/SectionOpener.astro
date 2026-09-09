@@ -1,0 +1,100 @@
+---
+/**
+ * The site's recurring opener: one enormous word sitting on a full-width rule,
+ * a justified uppercase mono paragraph on the left, and the act index on the
+ * right. Every act after the hero begins with this, so the scroll acquires a
+ * rhythm you can feel before you read anything.
+ */
+import { ACT_COUNT } from '../data/content';
+
+interface Props {
+  id?: string;
+  word: string;
+  index: number;
+  kicker: string;
+  text: string;
+  /** Pinned acts must fit one viewport; the full-size opener does not. */
+  compact?: boolean;
+}
+
+const { id, word, index, kicker, text, compact = false } = Astro.props;
+
+/* Average advance of Archivo 900 at font-stretch 118%, in em. The word can be
+   no larger than the line box divided by this, or it runs off the page. */
+const ADVANCE = 0.72;
+const fit = (word.length * ADVANCE).toFixed(2);
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+{/* The opener stands a little behind the act's copy, so flying into a station
+    has parallax of its own. Real depth in the shaft's own space, not a scrubbed
+    y offset faking it — the camera's motion does the rest. */}
+<header class:list={["opener", compact && "opener--compact"]} data-depth style="--depth:-110px">
+  <hr class="rule rule--strong" />
+
+  <h2 class="opener__word display-word" id={id} data-anim="word" style={`--word-fit:${fit}`}>{word}</h2>
+
+  <div class="opener__meta">
+    <p class="mono-para" data-anim="lines">{text}</p>
+    <div class="opener__right">
+      <p class="eyebrow" data-anim="scramble">{kicker}</p>
+      <p class="readout opener__index">
+        Act {pad(index)} / {pad(ACT_COUNT)}
+      </p>
+    </div>
+  </div>
+</header>
+
+<style>
+  .opener { margin-bottom: clamp(56px, 7vw, 112px); }
+
+  .opener--compact { margin-bottom: clamp(16px, 2vw, 28px); }
+  .opener--compact .opener__word {
+    font-size: min(
+      clamp(30px, 5vw, 68px),
+      calc((100vw - 2 * var(--gutter)) / var(--word-fit))
+    );
+    margin-block: 10px 14px;
+  }
+  .opener--compact .mono-para {
+    font-size: 10.5px;
+    line-height: 1.5;
+    max-width: 52ch;
+  }
+  .opener--compact .opener__meta { gap: 32px; }
+
+  .opener__word {
+    font-size: min(
+      clamp(48px, 15vw, 240px),
+      calc((100vw - 2 * var(--gutter)) / var(--word-fit))
+    );
+    margin-block: clamp(16px, 2vw, 32px) clamp(28px, 3.5vw, 56px);
+  }
+
+  .opener__meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 48px;
+    flex-wrap: wrap;
+  }
+
+  /* Without an explicit basis the justified mono block shrinks to its longest
+     word and sets one word per line. It needs a real column to justify into. */
+  .opener__meta > .mono-para {
+    flex: 1 1 44ch;
+    min-width: min(44ch, 100%);
+  }
+
+  .opener__right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    text-align: right;
+  }
+
+  @media (max-width: 767px) {
+    .opener__meta { flex-direction: column; gap: 24px; }
+    .opener__right { align-items: flex-start; text-align: left; }
+  }
+</style>

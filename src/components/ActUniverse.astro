@@ -1,0 +1,114 @@
+---
+/**
+ * ACT 01 — UNIVERSE. Four oversized counted numerals, then the 3x4 matrix as a
+ * ruled table with squares at the intersections. The table is the first thing
+ * on the page that reads as *instrument output* rather than page furniture.
+ */
+import SectionOpener from './SectionOpener.astro';
+import { UNIVERSE } from '../data/content';
+---
+<section class="act universe" id="universe" data-act="1" aria-labelledby="universe-title">
+  <div class="stage" data-tunnel>
+    <SectionOpener
+      id="universe-title"
+      word={UNIVERSE.word}
+      index={1}
+      kicker={UNIVERSE.kicker}
+      text={UNIVERSE.text}
+    />
+
+    <ul class="universe__stats" data-anim-group>
+      {UNIVERSE.stats.map((stat, i) => (
+        <li class="universe__stat" data-anim="fade-up">
+          <span class="readout universe__idx">{String(i + 1).padStart(3, '0')}</span>
+          <span class="num universe__value" data-anim="counter">{stat.value}</span>
+          <span class="mono universe__label">{stat.label}</span>
+          <span class="universe__note">{stat.note}</span>
+        </li>
+      ))}
+    </ul>
+
+    <div class="universe__matrix">
+      <h3 class="h-section universe__heading" data-anim="lines">{UNIVERSE.matrix.heading}</h3>
+
+      <div class="matrix__scroll">
+        <table class="matrix">
+        <caption class="sr-only">{UNIVERSE.matrix.caption}</caption>
+        <thead>
+          <tr>
+            <th scope="col" class="readout"></th>
+            {UNIVERSE.matrix.sectors.map((s) => (
+              <th scope="col" class="readout matrix__head">{s}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {UNIVERSE.matrix.classes.map((klass) => (
+            <tr>
+              <th scope="row" class="mono matrix__row-head">{klass}</th>
+              {UNIVERSE.matrix.sectors.map(() => (
+                <td class="matrix__cell"><i class="sq sq--signal"></i></td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .universe__stats {
+    list-style: none;
+    margin: 0 0 clamp(80px, 10vw, 160px);
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+    border-top: 1px solid var(--hairline);
+    padding-top: 32px;
+  }
+  .universe__stat { display: flex; flex-direction: column; gap: 10px; }
+  .universe__idx { color: var(--signal-hi); }
+  .universe__value {
+    font-size: clamp(48px, 7vw, 108px);
+    color: var(--ink);
+  }
+  .universe__label { color: var(--ink); }
+  .universe__note {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-dim);
+    max-width: 24ch;
+  }
+
+  .universe__heading { margin-bottom: clamp(32px, 4vw, 56px); max-width: 22ch; }
+
+  /* The 3x4 board does not fit a phone. Scroll it, do not clip it. */
+  .matrix__scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .matrix { width: 100%; min-width: 520px; border-collapse: collapse; }
+  .matrix th, .matrix td {
+    border: 1px solid var(--hairline);
+    padding: 18px 16px;
+    text-align: left;
+    font-weight: 400;
+  }
+  .matrix__head { color: var(--ink); white-space: nowrap; }
+  .matrix__row-head { color: var(--ink); white-space: nowrap; }
+  .matrix__cell { text-align: center; }
+  /* Squares sit exactly on the intersections — the ruled-table motif. */
+  .matrix__cell .sq { margin: 0 auto; }
+
+  @media (max-width: 900px) {
+    .universe__stats { grid-template-columns: repeat(2, 1fr); gap: 28px; }
+  }
+  @media (max-width: 640px) {
+    .matrix { font-size: 10px; }
+    .matrix th, .matrix td { padding: 12px 8px; }
+  }
+</style>

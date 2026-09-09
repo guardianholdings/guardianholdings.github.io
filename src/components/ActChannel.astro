@@ -1,0 +1,341 @@
+---
+/**
+ * ACT 09 — CHANNEL. The close: the form, the address, a live Sofia clock, and
+ * the legal line.
+ *
+ * The form posts to a Cloudflare Worker (see /worker) which relays the enquiry
+ * to the inbox. Both env vars below are read at BUILD time and are safe to
+ * publish: the endpoint is public by definition and a Turnstile site key is
+ * designed to be seen. The secret half lives only in the Worker.
+ *
+ * With PUBLIC_CONTACT_ENDPOINT unset the form falls back to the prepared mail
+ * draft it has always had. That is deliberate: the site can ship before the
+ * Worker exists, and pressing Send is never a no-op.
+ */
+import { CHANNEL, COMPANY } from '../data/content';
+
+const wordFit = (CHANNEL.word.length * 0.72).toFixed(2);
+const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
+---
+<section class="act channel" id="channel" data-act="9" aria-labelledby="channel-title">
+  <div class="stage" data-tunnel>
+    <hr class="rule rule--strong" />
+
+    <div class="channel__top">
+      <h2 class="display-word channel__word" id="channel-title" data-anim="word" style={`--word-fit:${wordFit}`}>{CHANNEL.word}</h2>
+      <p class="mono-para" data-anim="lines">{CHANNEL.text}</p>
+    </div>
+
+    <div class="channel__grid">
+      <div class="channel__form-col">
+        <h3 class="h-section channel__heading" data-anim="lines">{CHANNEL.formHeading}</h3>
+
+        <form class="channel__form" data-contact novalidate>
+          <label class="field">
+            <span class="mono field__label">Name</span>
+            <input class="field__input" type="text" name="name" autocomplete="name" required />
+          </label>
+
+          <label class="field">
+            <span class="mono field__label">Email</span>
+            <input class="field__input" type="email" name="email" autocomplete="email" required />
+          </label>
+
+          <fieldset class="field field--roles">
+            <legend class="mono field__label">I am</legend>
+            {CHANNEL.roles.map((role, i) => (
+              <label class="radio">
+                <input type="radio" name="role" value={role} checked={i === 0} />
+                <span class="mono">{role}</span>
+              </label>
+            ))}
+          </fieldset>
+
+          <label class="field">
+            <span class="mono field__label">Message</span>
+            <textarea class="field__input field__input--area" name="message" rows="5" required></textarea>
+          </label>
+
+          {/* Honeypot. Named like a field a bot wants to fill, hidden from
+              people, never read by anything but the Worker. */}
+          <div class="field--trap" aria-hidden="true">
+            <label>
+              Company
+              <input type="text" name="company" tabindex="-1" autocomplete="off" />
+            </label>
+          </div>
+
+          {turnstileKey && (
+            <div class="channel__turnstile cf-turnstile" data-sitekey={turnstileKey} data-theme="dark"></div>
+          )}
+
+          <button class="door door--primary" type="submit">
+            Send
+            <svg viewBox="0 0 24 8" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square" aria-hidden="true">
+              <path d="M0 4h22M18 .5L22 4l-4 3.5" />
+            </svg>
+          </button>
+
+          <p class="readout channel__note">{CHANNEL.formNote}</p>
+          <p class="readout channel__status" data-contact-status role="status" hidden></p>
+        </form>
+      </div>
+
+      <div class="channel__meta">
+        <div class="channel__block">
+          <p class="eyebrow">Write</p>
+          <a class="channel__mail" href={`mailto:${COMPANY.email}`} data-cursor-label="Write">{COMPANY.email}</a>
+        </div>
+
+        <div class="channel__block">
+          <p class="eyebrow">Visit</p>
+          <address class="channel__address">
+            {COMPANY.name}<br />
+            {COMPANY.street}<br />
+            {COMPANY.city}, {COMPANY.country}
+          </address>
+        </div>
+
+        <div class="channel__block">
+          <p class="eyebrow">Locate</p>
+          <p class="readout">{COMPANY.coords}</p>
+          <p class="readout channel__clock">Local <span data-channel-clock>--:--:--</span> EET</p>
+        </div>
+      </div>
+    </div>
+
+    <footer class="channel__footer">
+      <hr class="rule" />
+      <p class="h-statement channel__ask" data-anim="lines">{CHANNEL.footerAsk}</p>
+      <p class="mono-para channel__footpara" data-anim="lines">{CHANNEL.footerPara}</p>
+
+      <p class="channel__brand">{CHANNEL.brandLine}</p>
+
+      <div class="channel__legal">
+        <p class="readout">© {new Date().getFullYear()} {COMPANY.name}</p>
+        <p class="readout channel__legalline">{CHANNEL.legal}</p>
+        <a class="readout channel__privacy" href="/privacy-policy">Privacy policy</a>
+      </div>
+    </footer>
+  </div>
+</section>
+
+{turnstileKey && (
+  <script is:inline async defer src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>
+)}
+
+<style>
+  .channel__top {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 48px; flex-wrap: wrap;
+    margin-block: clamp(16px, 2vw, 32px) clamp(56px, 7vw, 104px);
+  }
+  .channel__word {
+    font-size: min(
+      clamp(48px, 12vw, 180px),
+      calc((100vw - 2 * var(--gutter)) / var(--word-fit))
+    );
+  }
+  .channel__top > .mono-para { flex: 0 1 44ch; min-width: min(44ch, 100%); }
+
+  .channel__grid {
+    display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: clamp(40px, 6vw, 96px);
+    margin-bottom: clamp(80px, 10vw, 144px);
+  }
+  .channel__heading { max-width: 20ch; margin-bottom: clamp(28px, 3.5vw, 44px); }
+
+  .channel__form { display: flex; flex-direction: column; gap: 24px; max-width: 52ch; position: relative; }
+
+  /* Off-screen, not display:none: a bot that skips hidden inputs still fills
+     what is in the DOM, and a screen reader never reaches it (aria-hidden,
+     tabindex -1). */
+  .field--trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+  /* Reserve the widget's height so the button does not jump when it loads. */
+  .channel__turnstile { min-height: 65px; }
+  .field { display: flex; flex-direction: column; gap: 8px; border: 0; padding: 0; margin: 0; }
+  .field__label { color: var(--ink-dim); }
+  .field__input {
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--hairline-strong);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    padding: 12px 0;
+    transition: border-color var(--dur-fast);
+  }
+  .field__input:focus { outline: none; border-bottom-color: var(--signal); }
+  .field__input--area { resize: vertical; }
+
+  .field--roles { display: flex; flex-direction: row; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .field--roles legend { float: left; width: 100%; margin-bottom: 8px; }
+  .radio { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--ink-muted); }
+  .radio input { accent-color: var(--signal); }
+
+  .channel__note { color: var(--ink-dim); max-width: 44ch; line-height: 1.6; letter-spacing: 0.08em; }
+  .channel__status { color: var(--signal-hi); max-width: 44ch; line-height: 1.6; letter-spacing: 0.08em; margin-top: -12px; }
+  .channel__status[hidden] { display: none; }
+
+  .channel__meta { display: flex; flex-direction: column; gap: clamp(32px, 4vw, 52px); }
+  .channel__block { display: flex; flex-direction: column; gap: 12px; }
+  .channel__mail {
+    font-family: var(--font-display); font-weight: 500;
+    font-size: clamp(18px, 1.7vw, 24px); letter-spacing: -0.02em;
+    border-bottom: 1px solid var(--hairline-strong);
+    align-self: flex-start; padding-bottom: 4px;
+    transition: color var(--dur-fast), border-color var(--dur-fast);
+  }
+  .channel__mail:hover { color: var(--signal-hi); border-color: var(--signal); }
+  .channel__address { font-style: normal; font-size: 14px; line-height: 1.7; color: var(--ink-muted); }
+  .channel__clock span { color: var(--signal-hi); }
+
+  .channel__footer { border-top: 0; }
+  .channel__ask { margin-block: clamp(40px, 5vw, 72px) clamp(20px, 2.5vw, 32px); max-width: 16ch; }
+  .channel__footpara { margin-bottom: clamp(28px, 3.5vw, 44px); }
+  .channel__brand {
+    font-size: 14px; line-height: 1.7; color: var(--ink-muted);
+    max-width: 62ch; margin: 0 0 clamp(48px, 6vw, 80px);
+  }
+
+  .channel__legal {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 32px; flex-wrap: wrap;
+    border-top: 1px solid var(--hairline); padding-top: 24px;
+  }
+  .channel__legalline { max-width: 60ch; line-height: 1.6; letter-spacing: 0.08em; }
+  .channel__privacy { border-bottom: 1px solid var(--hairline-strong); }
+  .channel__privacy:hover { color: var(--signal-hi); }
+
+  @media (max-width: 900px) {
+    .channel__grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  import { localTime } from '../lib/exchanges';
+  import { COMPANY, FORM } from '../data/content';
+
+  /* Live Sofia clock — direct init, no lifecycle gate. */
+  const clock = document.querySelector<HTMLElement>('[data-channel-clock]');
+  if (clock) {
+    const tick = () => { clock.textContent = localTime(COMPANY.tz); };
+    tick();
+    let timer = window.setInterval(tick, 1000);
+    document.addEventListener('visibilitychange', () => {
+      window.clearInterval(timer);
+      if (!document.hidden) { tick(); timer = window.setInterval(tick, 1000); }
+    });
+  }
+
+  /* Empty at build time means no backend is wired, and the form keeps its
+     original mail-draft behaviour. */
+  const ENDPOINT: string = import.meta.env.PUBLIC_CONTACT_ENDPOINT ?? '';
+
+  /* Bots submit instantly. The Worker judges this together with the honeypot
+     and answers 200 either way, so a bot never learns which one caught it. */
+  const readyAt = Date.now();
+
+  declare global {
+    interface Window { turnstile?: { reset: (el?: HTMLElement) => void } }
+  }
+
+  const form = document.querySelector<HTMLFormElement>('[data-contact]');
+  const status = document.querySelector<HTMLElement>('[data-contact-status]');
+  const button = form?.querySelector<HTMLButtonElement>('button[type="submit"]') ?? null;
+
+  const say = (text: string) => {
+    if (!status) return;
+    status.textContent = text;
+    status.hidden = false;
+  };
+
+  /* The browser's own validation bubble, carrying our strings rather than the
+     platform's. Every message says what happened and what to do, then stops —
+     no apology, no "please", no exclamation mark. */
+  const field = (name: string) =>
+    form?.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
+
+  function complain(name: string, message: string): boolean {
+    const el = field(name);
+    if (!el) return false;
+    el.setCustomValidity(message);
+    el.reportValidity();
+    // Clear on the next edit, or the stale message sticks to the next submit.
+    el.addEventListener('input', () => el.setCustomValidity(''), { once: true });
+    return true;
+  }
+
+  /* The prepared mail draft. Once the only path, now also the recovery path:
+     if the send fails, what the visitor typed is handed to their mail client
+     rather than lost. The subject and the signature block are a contract with
+     admin/src/lib/enquiries.ts, which parses these messages back — the Worker
+     builds the identical shape. */
+  const draft = (name: string, email: string, role: string, message: string): boolean => {
+    const subject = role === 'An investor' ? `Investor · ${name}` : `Founder · ${name}`;
+    const body = `${message}\n\n—\n${name}\n${email}\n${role}`;
+    try {
+      window.location.href =
+        `mailto:${COMPANY.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const name = String(data.get('name') ?? '').trim();
+    const email = String(data.get('email') ?? '').trim();
+    const role = String(data.get('role') ?? '');
+    const message = String(data.get('message') ?? '').trim();
+
+    // Clear any message left over from a previous submit, or a stale custom
+    // validity would make a now-valid field report the old complaint.
+    for (const key of ['name', 'email', 'message']) field(key)?.setCustomValidity('');
+
+    if (!name) return void complain('name', FORM.nameRequired);
+    if (!email) return void complain('email', FORM.emailRequired);
+    if (!field('email')?.validity.valid) return void complain('email', FORM.emailInvalid);
+    if (!message) return void complain('message', FORM.messageRequired);
+
+    if (!ENDPOINT) {
+      return void say(draft(name, email, role, message) ? FORM.mailOpened : FORM.mailFailed);
+    }
+
+    // Turnstile's implicit render drops this input into the form itself. Only
+    // demand it when the widget is actually on the page.
+    const token = String(data.get('cf-turnstile-response') ?? '');
+    if (form.querySelector('.cf-turnstile') && !token) return void say(FORM.botCheck);
+
+    if (button) button.disabled = true;
+    say(FORM.sending);
+
+    try {
+      const res = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          role,
+          message,
+          token,
+          company: String(data.get('company') ?? ''),
+          elapsed: Date.now() - readyAt,
+        }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      form.reset();
+      window.turnstile?.reset();
+      say(FORM.sent);
+    } catch {
+      say(FORM.sendFailed);
+      if (!draft(name, email, role, message)) say(FORM.mailFailed);
+    } finally {
+      if (button) button.disabled = false;
+    }
+  });
+</script>

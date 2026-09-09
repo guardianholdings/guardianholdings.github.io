@@ -1,0 +1,406 @@
+---
+/**
+ * ACT 06 — HELD. Nine positions plotted on a sector x asset-class board. Names
+ * are withheld until a founder clears them, and the readout counts CELLS rather
+ * than positions: a number of holdings is an unpublished count, and it invites
+ * the question of what happened to the others.
+ *
+ * Filtering genuinely RE-PLOTS the board: the axes collapse to the selected
+ * sector/class and the surviving points redistribute across the full width,
+ * animated with GSAP Flip. This is the only thing on these elements that yields
+ * a real rect delta — the previous implementation only faded them, so a Flip
+ * would have measured two identical rects and animated nothing.
+ */
+import SectionOpener from './SectionOpener.astro';
+import { PORTFOLIO } from '../data/content';
+
+/** Deterministic offset inside a cell so points do not sit dead-centre. */
+const jitter = (ref: string, axis: number) => {
+  let h = axis * 2654435761;
+  for (let i = 0; i < ref.length; i += 1) h = (h * 31 + ref.charCodeAt(i)) >>> 0;
+  return 0.3 + ((h % 1000) / 1000) * 0.4;
+};
+
+/**
+ * Where a cell holds more than one position the hash is not enough: three Tech
+ * names hashed within 0.04 of a cell of each other, which is eleven pixels, and
+ * their labels sat on top of one another. Co-located points are laid out
+ * instead — spread along x by index, staggered up and down in y — so the plot
+ * stays readable however many names land in one cell.
+ *
+ * Jitter is emitted as data so the client can re-derive positions per filter.
+ */
+const key = (c: { sector: number; klass: number }) => `${c.sector}:${c.klass}`;
+
+const points = PORTFOLIO.companies.map((pt) => {
+  const peers = PORTFOLIO.companies.filter((c) => key(c) === key(pt));
+  const n = peers.length;
+  const k = peers.findIndex((c) => c.ref === pt.ref);
+  return {
+    ...pt,
+    jx: n === 1 ? jitter(pt.ref, 1) : 0.2 + (k / (n - 1)) * 0.6,
+    jy: n === 1 ? jitter(pt.ref, 2) : k % 2 === 0 ? 0.32 : 0.68,
+  };
+});
+---
+<section class="act portfolio" id="portfolio" data-act="6" aria-labelledby="portfolio-title">
+  <div class="stage" data-tunnel>
+    <SectionOpener
+      id="portfolio-title"
+      word={PORTFOLIO.word}
+      index={6}
+      kicker={PORTFOLIO.kicker}
+      text={PORTFOLIO.text}
+    />
+
+    <h3 class="h-section portfolio__heading" data-anim="lines">{PORTFOLIO.heading}</h3>
+
+    <p class="body portfolio__body" data-anim="lines">{PORTFOLIO.body}</p>
+
+    <div class="portfolio__filters" role="group" aria-label="Filter by asset class">
+      <button class="chip chip--on mono" type="button" data-filter-class="all" aria-pressed="true">All classes</button>
+      {PORTFOLIO.classes.map((c, i) => (
+        <button class="chip mono" type="button" data-filter-class={i} aria-pressed="false">{c}</button>
+      ))}
+    </div>
+    <div class="portfolio__filters" role="group" aria-label="Filter by sector">
+      <button class="chip chip--on mono" type="button" data-filter-sector="all" aria-pressed="true">All sectors</button>
+      {PORTFOLIO.sectors.map((s, i) => (
+        <button class="chip mono" type="button" data-filter-sector={i} aria-pressed="false">{s}</button>
+      ))}
+    </div>
+
+    <p class="readout portfolio__count" aria-live="polite">
+      <span data-portfolio-count>12</span> / 12 cells
+    </p>
+
+    <p class="readout portfolio__empty" data-portfolio-empty hidden>{PORTFOLIO.empty}</p>
+
+    <div
+      class="portfolio__board"
+      data-board
+      style={`--cols:${PORTFOLIO.sectors.length};--rows:${PORTFOLIO.classes.length}`}
+    >
+      <div class="portfolio__grid" data-grid aria-hidden="true">
+        {PORTFOLIO.classes.map((_, r) =>
+          PORTFOLIO.sectors.map((__, c) => (
+            <i class="portfolio__cell" data-cell-sector={c} data-cell-class={r}></i>
+          ))
+        )}
+      </div>
+
+      <div class="portfolio__axis portfolio__axis--x" aria-hidden="true">
+        {PORTFOLIO.sectors.map((s, i) => (
+          <span class="readout" data-axis-sector={i}>{s}</span>
+        ))}
+      </div>
+      <div class="portfolio__axis portfolio__axis--y" aria-hidden="true">
+        {PORTFOLIO.classes.map((c, i) => (
+          <span class="readout" data-axis-class={i}>{c}</span>
+        ))}
+      </div>
+
+      {points.map((pt) => (
+        <span
+          class="portfolio__pt"
+          data-pt
+          data-pt-class={pt.klass}
+          data-pt-sector={pt.sector}
+          data-pt-jx={pt.jx.toFixed(4)}
+          data-pt-jy={pt.jy.toFixed(4)}
+          style={`left:${((pt.sector + pt.jx) / PORTFOLIO.sectors.length) * 100}%;top:${((pt.klass + pt.jy) / PORTFOLIO.classes.length) * 100}%`}
+        >
+          <i class="sq sq--signal"></i>
+          <em class="readout">{pt.short}</em>
+        </span>
+      ))}
+    </div>
+
+    <p class="sr-only">{PORTFOLIO.desc}</p>
+
+    <h4 class="h-section portfolio__names" data-anim="lines">{PORTFOLIO.namesHeading}</h4>
+    <p class="body portfolio__nameslede" data-anim="lines">{PORTFOLIO.namesLede}</p>
+
+    <ul class="portfolio__holdings">
+      {PORTFOLIO.companies.map((c) => (
+        <li class="holding" data-row data-pt-class={c.klass} data-pt-sector={c.sector}>
+          <p class="readout holding__cell">
+            {PORTFOLIO.sectors[c.sector]} · {PORTFOLIO.classes[c.klass]}
+          </p>
+          <h5 class="holding__name">
+            {/* New tab, deliberately: this is one 22,000px document with no
+                navigation, so following a link away from it loses the reader's
+                place with nothing to get it back. */}
+            {c.url
+              ? <a href={c.url} target="_blank" rel="noopener" data-cursor-label="Open">{c.name}</a>
+              : c.name}
+          </h5>
+          <p class="holding__line">{c.line}</p>
+        </li>
+      ))}
+    </ul>
+
+    <p class="readout portfolio__note">{PORTFOLIO.note}</p>
+  </div>
+</section>
+
+<style>
+  .portfolio__heading { max-width: 22ch; margin-bottom: clamp(20px, 2.4vw, 30px); }
+  .portfolio__body { max-width: 58ch; margin: 0 0 clamp(28px, 3.5vw, 48px); }
+
+  .portfolio__empty { color: var(--signal-hi); margin: 0 0 10px; }
+  .portfolio__empty[hidden] { display: none; }
+
+  .portfolio__filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .chip {
+    padding: 8px 14px;
+    border: 1px solid var(--hairline);
+    background: transparent;
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: color var(--dur-fast), border-color var(--dur-fast);
+  }
+  .chip:hover { color: var(--ink); }
+  .chip--on { color: var(--ink); border-color: var(--signal); }
+
+  .portfolio__count { margin: 20px 0 24px; }
+  .portfolio__count span { color: var(--signal-hi); }
+
+  .portfolio__board {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    margin-bottom: clamp(48px, 6vw, 80px);
+    margin-left: 120px;
+  }
+  .portfolio__grid {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    /* Driven by the filter so the board itself collapses, not just the points. */
+    grid-template-columns: repeat(var(--cols), 1fr);
+    grid-template-rows: repeat(var(--rows), 1fr);
+  }
+  .portfolio__cell { border: 1px solid var(--hairline); }
+  .portfolio__cell.is-off { display: none; }
+
+  .portfolio__axis--x {
+    position: absolute;
+    left: 0; right: 0; top: 100%;
+    display: grid;
+    grid-template-columns: repeat(var(--cols), 1fr);
+    padding-top: 12px;
+  }
+  .portfolio__axis--y {
+    position: absolute;
+    right: 100%; top: 0; bottom: 0;
+    display: grid;
+    grid-template-rows: repeat(var(--rows), 1fr);
+    align-items: center;
+    padding-right: 16px;
+    text-align: right;
+    width: 120px;
+  }
+  .portfolio__axis span.is-off { display: none; }
+
+  .portfolio__pt {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    /* Independent `translate`, NOT transform: GSAP's CSSPlugin writes to
+       `transform`, and the browser composes translate before it — so the -50%
+       stays genuinely percentage-based and survives every Flip tween. Putting
+       the centring in `transform` gets it flattened to pixels on first touch. */
+    translate: -50% -50%;
+  }
+  /* No CSS transition on opacity here: Flip's callbacks own it, and stacking a
+     240ms CSS interpolation on top of a GSAP tween smears both. */
+  .portfolio__pt em { font-style: normal; color: var(--ink-muted); }
+  /* A real display:none, so Flip's onEnter/onLeave actually fire and the point
+     leaves the accessibility tree along with the layout. */
+  .portfolio__pt.is-off { display: none; }
+
+  /* The named book. A ruled list rather than the old placeholder table: the
+     table existed to say nothing nine times, and a named holding needs a
+     sentence beside it, not a fourth column. No horizontal scroller, so the
+     far edge is reachable on a phone without a swipe nobody advertises. */
+  .portfolio__names { max-width: 22ch; margin: clamp(48px, 6vw, 80px) 0 clamp(14px, 1.6vw, 20px); }
+  .portfolio__nameslede { max-width: 56ch; margin: 0 0 clamp(24px, 3vw, 36px); }
+
+  .portfolio__holdings {
+    list-style: none;
+    margin: 0 0 28px;
+    padding: 0;
+    display: grid;
+    gap: 0;
+  }
+  .holding {
+    display: grid;
+    grid-template-columns: minmax(0, 20ch) minmax(0, 1fr);
+    gap: 4px clamp(20px, 3vw, 48px);
+    border-top: 1px solid var(--hairline);
+    padding: 18px 0;
+    align-items: baseline;
+  }
+  .holding[hidden] { display: none; }
+  .holding__cell { grid-column: 1; color: var(--ink-dim); margin: 0; }
+  .holding__name {
+    grid-column: 2; grid-row: 1;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(16px, 1.5vw, 19px);
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .holding__name a { border-bottom: 1px solid var(--hairline-strong); }
+  .holding__name a:hover { color: var(--signal-hi); }
+  .holding__line {
+    grid-column: 2;
+    margin: 6px 0 0;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--ink-muted);
+    max-width: 62ch;
+  }
+
+  .portfolio__note { color: var(--ink-dim); max-width: 68ch; line-height: 1.6; }
+
+  @media (max-width: 767px) {
+    .portfolio__board { margin-left: 0; aspect-ratio: 1 / 1; }
+    .portfolio__axis--y { display: none; }
+    .holding { grid-template-columns: minmax(0, 1fr); }
+    .holding__cell { grid-column: 1; grid-row: 1; }
+    .holding__name, .holding__line { grid-column: 1; grid-row: auto; }
+  }
+</style>
+
+<script>
+  import { gsap, Flip, ScrollTrigger } from '../scripts/gsap';
+  import { prefersReducedMotion } from '../lib/motion-policy';
+
+  // Direct init — no lifecycle event gates this. (A one-page build has no
+  // astro:page-load, and a script that only listens for one never runs.)
+  const section = document.querySelector<HTMLElement>('#portfolio');
+
+  if (section) {
+    const board = section.querySelector<HTMLElement>('[data-board]')!;
+    const points = Array.from(section.querySelectorAll<HTMLElement>('[data-pt]'));
+    const cells = Array.from(section.querySelectorAll<HTMLElement>('[data-cell-sector]'));
+    const rows = Array.from(section.querySelectorAll<HTMLElement>('[data-row]'));
+    const axisX = Array.from(section.querySelectorAll<HTMLElement>('[data-axis-sector]'));
+    const axisY = Array.from(section.querySelectorAll<HTMLElement>('[data-axis-class]'));
+    const count = section.querySelector<HTMLElement>('[data-portfolio-count]');
+    const empty = section.querySelector<HTMLElement>('[data-portfolio-empty]');
+
+    const SECTORS = [0, 1, 2, 3];
+    const CLASSES = [0, 1, 2];
+
+    let activeClass = 'all';
+    let activeSector = 'all';
+
+    const visibleSectors = () => (activeSector === 'all' ? SECTORS : [Number(activeSector)]);
+    const visibleClasses = () => (activeClass === 'all' ? CLASSES : [Number(activeClass)]);
+
+    const matches = (el: HTMLElement) =>
+      (activeClass === 'all' || el.dataset.ptClass === activeClass) &&
+      (activeSector === 'all' || el.dataset.ptSector === activeSector);
+
+    /**
+     * Re-derive every visible point's position against the CURRENT axes. This is
+     * the whole point of the change: with four sectors on screen a Defence point
+     * sits in the first quarter, but once Defence is the only sector it spreads
+     * across the full width. That movement is the rect delta Flip animates.
+     */
+    function replot(): number {
+      const sectors = visibleSectors();
+      const classes = visibleClasses();
+      let shown = 0;
+
+      for (const p of points) {
+        const on = matches(p);
+        p.classList.toggle('is-off', !on);
+        if (!on) continue;
+        shown += 1;
+
+        const col = sectors.indexOf(Number(p.dataset.ptSector));
+        const row = classes.indexOf(Number(p.dataset.ptClass));
+        const jx = Number(p.dataset.ptJx);
+        const jy = Number(p.dataset.ptJy);
+
+        p.style.left = `${((col + jx) / sectors.length) * 100}%`;
+        p.style.top = `${((row + jy) / classes.length) * 100}%`;
+      }
+
+      board.style.setProperty('--cols', String(sectors.length));
+      board.style.setProperty('--rows', String(classes.length));
+
+      for (const cell of cells) {
+        const off =
+          !sectors.includes(Number(cell.dataset.cellSector)) ||
+          !classes.includes(Number(cell.dataset.cellClass));
+        cell.classList.toggle('is-off', off);
+      }
+
+      axisX.forEach((el) => {
+        el.classList.toggle('is-off', !sectors.includes(Number(el.dataset.axisSector)));
+      });
+      axisY.forEach((el) => {
+        el.classList.toggle('is-off', !classes.includes(Number(el.dataset.axisClass)));
+      });
+
+      // The readout counts cells on the board, never positions in it.
+      if (count) count.textContent = String(sectors.length * classes.length);
+      if (empty) empty.toggleAttribute('hidden', shown > 0);
+
+      return shown;
+    }
+
+    function apply(): void {
+      // Rows are deferred to onComplete: hiding them changes document height,
+      // and a ScrollTrigger.refresh() landing mid-tween would fight the Flip.
+      const settleRows = () => {
+        rows.forEach((r) => r.toggleAttribute('hidden', !matches(r)));
+        ScrollTrigger.refresh();
+      };
+
+      if (prefersReducedMotion()) {
+        replot();
+        settleRows();
+        return;
+      }
+
+      const state = Flip.getState(points);
+      replot();
+
+      Flip.from(state, {
+        duration: 0.62,
+        ease: 'power3.inOut',
+        stagger: 0.02,
+        onEnter: (els) =>
+          gsap.fromTo(els, { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.4 }),
+        onLeave: (els) => gsap.to(els, { opacity: 0, scale: 0.6, duration: 0.28 }),
+        onComplete: settleRows,
+      });
+    }
+
+    const bind = (attr: 'filterClass' | 'filterSector', selector: string) => {
+      const buttons = Array.from(section.querySelectorAll<HTMLButtonElement>(selector));
+      buttons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const value = btn.dataset[attr] ?? 'all';
+          if (attr === 'filterClass') activeClass = value;
+          else activeSector = value;
+          buttons.forEach((b) => {
+            const on = b === btn;
+            b.classList.toggle('chip--on', on);
+            b.setAttribute('aria-pressed', String(on));
+          });
+          apply();
+        });
+      });
+    };
+
+    bind('filterClass', '[data-filter-class]');
+    bind('filterSector', '[data-filter-sector]');
+  }
+</script>

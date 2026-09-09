@@ -1,0 +1,319 @@
+---
+/**
+ * The telemetry HUD. Fixed, always present, never scrolls.
+ *
+ * This is the layer that turns a page into an instrument: real Sofia and UTC
+ * clocks, the live state of six exchanges, the master SNR readout and the act
+ * index. Everything in it is genuinely live — none of it is decorative text.
+ *
+ * Rendered server-side with neutral placeholders so it never causes layout
+ * shift, then filled in by the client script below.
+ */
+import { COMPANY, ACTS, ACT_COUNT } from '../data/content';
+import { EXCHANGES } from '../lib/exchanges';
+---
+<div class="hud" aria-hidden="true">
+  <div class="hud__row hud__row--top gh-reground">
+    <span class="hud__cell">Guardian Holdings JSC</span>
+    {/* Sofia is the disambiguator — the only local-intent token in the readout,
+        and the thing that separates this company from an 1847 Trinidadian
+        insurer. At narrow widths the coordinates drop and the city stays. */}
+    <span class="hud__cell hud__cell--dim">{COMPANY.city}<span class="hud__coords"> · {COMPANY.coords}</span></span>
+    <span class="hud__spacer"></span>
+    <span class="hud__cell" data-hud="sofia">SOF --:--:--</span>
+    <span class="hud__cell hud__cell--dim" data-hud="utc">UTC --:--</span>
+  </div>
+
+  <div class="hud__row hud__row--bottom gh-reground">
+    <span class="hud__cell hud__markets" title="6 exchanges · live open state · weekdays only">
+      {EXCHANGES.map((ex) => (
+        <span class="hud__mkt" data-hud-mkt={ex.id} title={`${ex.city} · ${ex.exchange}`}>
+          <i class="hud__dot"></i><b class="hud__code">{ex.code}</b>
+        </span>
+      ))}
+      <span class="hud__cell--dim" data-hud="open">-/6 open</span>
+    </span>
+    <span class="hud__spacer"></span>
+    <span class="hud__cell hud__res" title="6 modes · live amplitude · peak marked">
+      <span class="hud__modes" data-hud="modes">
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+      </span>
+      <b class="hud__mode">M<em data-hud="mode">1</em></b>
+    </span>
+    {/* Naming the subject is the fix: a number labelled *signal*, rendered
+        inches from six live market sessions, is otherwise read as a market
+        indicator by every visitor and by anyone doing diligence. */}
+    <span class="hud__cell hud__snr" title="This page · signal to noise · 4 dB to 48 dB"><em data-hud="snr">00</em>dB SNR</span>
+    <span class="hud__cell hud__act">
+      <em data-hud="act">01</em> / {String(ACT_COUNT).padStart(2, '0')}
+      <b class="hud__actname" data-hud="actname">{ACTS[0].label}</b>
+    </span>
+  </div>
+
+  <div class="hud__rail"><i class="hud__rail-fill" data-hud="rail"></i></div>
+</div>
+
+<style>
+  .hud {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    pointer-events: none;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Scrims. Content scrolls underneath the HUD, so without these both the
+     readout and the copy passing behind it become unreadable at the moment
+     they overlap. Gradient rather than a solid bar: a hard edge would read as
+     a toolbar, which is exactly what this is not. */
+  .hud::before,
+  .hud::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 76px;
+    pointer-events: none;
+  }
+  /* All three stops now derive from --bg. The middle stop used to be a
+     hard-coded rgba(10, 9, 7, .5) — a literal spelling of the dark ground that
+     no token could reach, which would have left a near-black bar across a bone
+     act. */
+  .hud::before {
+    --gg: var(--g-top, 0);
+    top: 0;
+    background: linear-gradient(
+      to bottom,
+      var(--bg) 0%,
+      var(--bg) 46%,
+      color-mix(in srgb, var(--bg) 50%, transparent) 68%,
+      transparent 100%
+    );
+  }
+  .hud::after {
+    --gg: var(--g-bot, 0);
+    bottom: 0;
+    background: linear-gradient(
+      to top,
+      var(--bg) 0%,
+      var(--bg) 46%,
+      color-mix(in srgb, var(--bg) 50%, transparent) 68%,
+      transparent 100%
+    );
+  }
+
+  .hud__row {
+    position: absolute;
+    left: var(--gutter);
+    right: var(--gutter);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  /* Each row re-grounds from its OWN band, so the top readout can be on bone
+     while the bottom is still on the dark ground mid-wipe. */
+  .hud__row {
+    color: var(--ink-muted);
+  }
+  .hud__row--top { top: 20px; --gg: var(--g-top, 0); }
+  .hud__row--bottom { bottom: 20px; --gg: var(--g-bot, 0); }
+  .hud__spacer { flex: 1 1 auto; }
+  .hud__cell--dim { color: var(--ink-dim); }
+
+  .hud__markets { display: flex; align-items: center; gap: 14px; }
+  .hud__mkt { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-dim); }
+  .hud__code { font-weight: 400; }
+  .hud__dot {
+    width: 5px; height: 5px; flex: none;
+    background: var(--ink-dim);
+    transition: background-color var(--dur-fast) linear;
+  }
+  /* Open markets are the one place raw --signal is allowed to sit next to text. */
+  .hud__mkt[data-state='open'] { color: var(--ink); }
+  .hud__mkt[data-state='open'] .hud__dot { background: var(--signal); }
+  .hud__mkt[data-state='lunch'] .hud__dot,
+  .hud__mkt[data-state='pre-open'] .hud__dot { background: var(--signal-dim); }
+
+  /* The modal spectrum. Six bars, one per mode, height = that mode's live
+     envelope — the same six numbers the synth is using as partial gains and
+     the field is using as its wave shape. It is a readout, not an equaliser
+     animation: with the sound off it still shows exactly what is ringing. */
+  .hud__res { display: inline-flex; align-items: center; gap: 8px; }
+  .hud__modes {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 12px;
+  }
+  .hud__modes i {
+    display: block;
+    width: 2px;
+    height: 1px;
+    background: var(--ink-dim);
+    transform-origin: bottom;
+  }
+  /* The mode currently carrying the most energy is the one the drive is
+     locked to; it gets the accent so the readout has a subject. */
+  .hud__modes i[data-peak] { background: var(--signal); }
+  .hud__mode { font-weight: 400; color: var(--ink-dim); }
+  .hud__mode em { font-style: normal; color: var(--ink-muted); }
+
+  .hud__snr em, .hud__act em { font-style: normal; color: var(--ink); }
+  .hud__act { display: inline-flex; align-items: baseline; gap: 10px; }
+  .hud__actname { font-weight: 400; color: var(--signal-hi); }
+
+  .hud__rail {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--hairline);
+  }
+  .hud__rail-fill {
+    display: block;
+    width: 100%;
+    height: 0%;
+    background: var(--signal);
+    transform-origin: top;
+  }
+
+  /* On a phone the row has room for the dots and the two live numbers, and
+     nothing else. Everything droppable is dropped rather than wrapped. */
+  @media (max-width: 767px) {
+    .hud { font-size: 9px; letter-spacing: 0.12em; }
+    .hud__row { gap: 10px; left: 16px; right: 16px; }
+    .hud__markets { gap: 6px; }
+    .hud__code,
+    .hud__actname,
+    .hud__mode,
+    .hud__snr b,
+    .hud__coords { display: none; }
+    .hud__mkt { gap: 0; }
+  }
+</style>
+
+<script>
+  import { EXCHANGES, getStatus, localTime } from '../lib/exchanges';
+  import { ACTS } from '../data/content';
+  import { bus } from '../lib/bus';
+  import { MODES, getResonance } from '../scripts/resonance';
+  import { motionAllowed } from '../lib/motion-policy';
+
+  const q = <T extends Element>(sel: string) => document.querySelector<T>(sel);
+
+  const el = {
+    sofia: q<HTMLElement>('[data-hud="sofia"]'),
+    utc: q<HTMLElement>('[data-hud="utc"]'),
+    open: q<HTMLElement>('[data-hud="open"]'),
+    snr: q<HTMLElement>('[data-hud="snr"]'),
+    act: q<HTMLElement>('[data-hud="act"]'),
+    actname: q<HTMLElement>('[data-hud="actname"]'),
+    rail: q<HTMLElement>('[data-hud="rail"]'),
+    modes: q<HTMLElement>('[data-hud="modes"]'),
+    mode: q<HTMLElement>('[data-hud="mode"]'),
+  };
+
+  const LABEL: Record<string, string> = {
+    open: 'open',
+    'pre-open': 'pre-open',
+    lunch: 'lunch break',
+    closed: 'closed',
+  };
+
+  /* ── clocks + market states ─────────────────────────────────────────── */
+  function tickClocks(): void {
+    const now = new Date();
+
+    if (el.sofia) el.sofia.textContent = `SOF ${localTime('Europe/Sofia', now)}`;
+    if (el.utc) {
+      el.utc.textContent = `UTC ${now.toISOString().slice(11, 16)}`;
+    }
+
+    let open = 0;
+    for (const ex of EXCHANGES) {
+      const status = getStatus(ex, now);
+      if (status.state === 'open') open += 1;
+      const node = document.querySelector<HTMLElement>(`[data-hud-mkt="${ex.id}"]`);
+      if (node) {
+        node.dataset.state = status.state;
+        // Four states, no fifth: open · pre-open · lunch break · closed.
+        node.title = `${ex.city} · ${ex.exchange} · ${LABEL[status.state]}`;
+      }
+    }
+    if (el.open) el.open.textContent = `${open}/${EXCHANGES.length} open`;
+  }
+
+  tickClocks();
+  let clockTimer = window.setInterval(tickClocks, 1000);
+  document.addEventListener('visibilitychange', () => {
+    window.clearInterval(clockTimer);
+    if (!document.hidden) {
+      tickClocks();
+      clockTimer = window.setInterval(tickClocks, 1000);
+    }
+  });
+
+  /* ── SNR readout ────────────────────────────────────────────────────── */
+  // 4dB of noise floor up to 48dB fully resolved — a plausible receiver range,
+  // and it means the readout is never a flat 0.
+  const SNR_FLOOR = 4;
+  const SNR_CEIL = 48;
+
+  bus.on('snr', (snr) => {
+    const db = Math.round(SNR_FLOOR + snr * (SNR_CEIL - SNR_FLOOR));
+    if (el.snr) el.snr.textContent = String(db).padStart(2, '0');
+    if (el.rail) el.rail.style.height = `${(snr * 100).toFixed(2)}%`;
+  });
+
+  bus.on('act', (index) => {
+    if (el.act) el.act.textContent = String(index + 1).padStart(2, '0');
+    if (el.actname) el.actname.textContent = ACTS[index]?.label ?? '';
+  });
+
+  /* ── modal spectrum ─────────────────────────────────────────────────── */
+  // 20Hz, not per frame: these are 3px bars and the eye cannot read them any
+  // faster, while the style writes are real work on every one of them.
+  const BARS_HZ = 20;
+  const bars = el.modes ? Array.from(el.modes.querySelectorAll('i')) : [];
+
+  // Reduced motion never builds the cavity, so this would be a permanent 20Hz
+  // loop writing six identical values — the opposite of what the preference
+  // asks for.
+  if (bars.length && motionAllowed()) {
+    let last = 0;
+    let peakShown = -1;
+
+    const draw = (now: number) => {
+      requestAnimationFrame(draw);
+      if (now - last < 1000 / BARS_HZ) return;
+      last = now;
+
+      const res = getResonance();
+      // Normalised against the loudest mode so the shape is always legible;
+      // the absolute level is already on the rail and the SNR readout.
+      let max = 1e-4;
+      for (let n = 0; n < MODES; n += 1) max = Math.max(max, res.env[n]);
+
+      for (let n = 0; n < bars.length; n += 1) {
+        const h = (1 + (res.env[n] / max) * 11).toFixed(1);
+        // Skip the write when the value has not moved: at 20Hz across six bars
+        // most frames change two or three of them, not all six.
+        if (bars[n].style.height !== `${h}px`) bars[n].style.height = `${h}px`;
+      }
+
+      const peak = res.peak - 1;
+      if (peak !== peakShown) {
+        if (bars[peakShown]) bars[peakShown].removeAttribute('data-peak');
+        if (bars[peak]) bars[peak].setAttribute('data-peak', '');
+        peakShown = peak;
+        if (el.mode) el.mode.textContent = String(res.peak);
+      }
+    };
+
+    requestAnimationFrame(draw);
+  }
+</script>

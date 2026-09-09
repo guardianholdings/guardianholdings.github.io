@@ -1,0 +1,111 @@
+---
+/**
+ * ACT 05 — PROVIDE. Six operating functions on a second pinned horizontal
+ * track. The glyphs are the hand-drawn instrument paths from the previous
+ * build, carried over verbatim and drawn in with DrawSVG.
+ */
+import SectionOpener from './SectionOpener.astro';
+import { PROVIDE } from '../data/content';
+---
+<section
+  class="provide"
+  id="provide"
+  data-act="5"
+  data-hscroll
+  data-refresh-priority="1"
+  aria-labelledby="provide-title"
+>
+  <div class="provide__stage act" data-tunnel>
+    <SectionOpener
+      id="provide-title"
+      word={PROVIDE.word}
+      index={5}
+      compact
+      kicker={PROVIDE.kicker}
+      text={PROVIDE.text}
+    />
+
+    <p class="readout provide__counter">
+      <span data-hscroll-index>01</span> — 0{PROVIDE.functions.length} · Panel
+    </p>
+
+    <div class="provide__viewport">
+      <ol class="provide__track" data-hscroll-track>
+        {PROVIDE.functions.map((fn, i) => (
+          <li class="fn">
+            <svg class="fn__glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1" stroke-linecap="square" aria-hidden="true" data-anim="draw">
+              {fn.icon.split(' M').map((seg, j) => (
+                <path d={j === 0 ? seg : `M${seg}`} />
+              ))}
+            </svg>
+            <span class="readout fn__idx">{String(i + 1).padStart(3, '0')}</span>
+            <h4 class="fn__title">{fn.title}</h4>
+            <p class="fn__line">{fn.line}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+
+    <div class="provide__rail"><i data-hscroll-rail></i></div>
+  </div>
+</section>
+
+<style>
+  /* A pinned section only ever shows its first viewport-height, so the
+     whole composition — opener, track and rail — has to fit inside one
+     screen. Anything below the fold is invisible for the entire pin. */
+  .provide__stage {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: clamp(76px, 9vh, 96px);
+  }
+  .provide__counter { margin: 0 0 clamp(16px, 2vw, 26px); color: var(--ink-dim); }
+  .provide__counter span { color: var(--signal-hi); }
+
+  .provide__viewport { overflow: hidden; }
+  @media (max-width: 767px) {
+    .provide__viewport { overflow-x: auto; scroll-snap-type: x mandatory; }
+  }
+
+  .provide__track {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: clamp(24px, 3vw, 48px);
+    width: max-content;
+  }
+
+  .fn {
+    flex: none;
+    width: clamp(260px, 26vw, 360px);
+    border-top: 1px solid var(--hairline-strong);
+    padding-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scroll-snap-align: start;
+  }
+  .fn__glyph { width: 32px; height: 32px; color: var(--signal-hi); }
+  .fn__idx { color: var(--ink-dim); }
+  .fn__title {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: clamp(18px, 1.9vw, 26px);
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+    margin: 0;
+  }
+  .fn__line { margin: 0; font-size: 14px; line-height: 1.65; color: var(--ink-muted); }
+
+  .provide__rail { margin-top: clamp(20px, 2.5vw, 32px); height: 1px; background: var(--hairline); }
+  .provide__rail i {
+    display: block; height: 1px; width: 100%;
+    background: var(--signal);
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+</style>

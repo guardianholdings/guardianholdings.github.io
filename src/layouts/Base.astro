@@ -1,0 +1,133 @@
+---
+import { Font } from 'astro:assets';
+import archivoLatin from '@fontsource-variable/archivo/files/archivo-latin-wght-normal.woff2?url';
+import '../styles/global.css';
+import { COMPANY, META } from '../data/content';
+import Hud from '../components/Hud.astro';
+import Grain from '../components/Grain.astro';
+import RegMarks from '../components/RegMarks.astro';
+import Field from '../components/Field.astro';
+import Sound from '../islands/sound/Sound';
+import Cursor from '../islands/cursor/Cursor';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** The scroll-only home page carries the full instrument; /privacy-policy does not. */
+  instrument?: boolean;
+}
+
+const {
+  title = META.title,
+  description = META.description,
+  instrument = false,
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+
+/* Organization — never FinancialService, FinancialProduct, serviceType,
+   makesOffer or areaServed. Those types describe an authorised entity offering
+   a financial service, and that is a claim this company must not make in
+   machine-readable form any more than it does in prose.
+
+   `name` carries the qualified form. The bare "Guardian Holdings" is the one
+   string that cannot win against an 1847 insurance conglomerate and a national
+   newspaper, and it must not be the declared name. */
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: COMPANY.name,
+  legalName: COMPANY.name,
+  url: Astro.site?.href,
+  email: COMPANY.email,
+  description: META.schema,
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: COMPANY.street,
+    addressLocality: COMPANY.city,
+    addressCountry: 'BG',
+  },
+  geo: { '@type': 'GeoCoordinates', latitude: COMPANY.lat, longitude: COMPANY.lon },
+  knowsAbout: [
+    'Private equity', 'Liquid markets', 'Real estate',
+    'Defence', 'Commodities', 'Technology', 'Financial services',
+  ],
+};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#0a0907" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:site_name" content="Guardian Holdings JSC" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {/* No og:image. The previous card belonged to the old radar design and was
+        removed; a summary_large_image card whose image 404s collapses in the
+        validator and the failure gets cached by Slack and LinkedIn, which is
+        worse than never declaring one. "summary" is the honest card for a site
+        with no image. Restore both tags together if an image is made. */}
+    <meta name="twitter:card" content="summary" />
+
+    {/* The display face sets the hero, which is the LCP element. Without a
+        preload the first paint measures in the fallback and the headline
+        reflows — visibly, because SplitText re-splits its lines when the real
+        face lands. */}
+    <link rel="preload" href={archivoLatin} as="font" type="font/woff2" crossorigin />
+    <Font cssVariable="--font-mono-src" preload />
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+  </head>
+
+  <body data-instrument={instrument ? '' : undefined}>
+    <a class="skip-link mono gh-reground" href="#main">Skip to content</a>
+
+    {/* A direct child of body at z-index 0, behind <main>. The dust is the only
+        thing left painting the shaft itself: the twelve hairline wall rings
+        that used to hang here were removed — they drew the tunnel as a diagram
+        of a tunnel, and the depth is carried perfectly well by the acts
+        receding through the dust. The bone inversion used to need a third fixed
+        sheet here too; now that an inverted act is a lit panel standing in the
+        shaft, it simply paints its own ground. */}
+    {instrument && <Field />}
+
+    {instrument && (
+      <>
+        <RegMarks />
+        <Hud />
+      </>
+    )}
+    <Grain />
+    {instrument && <div class="scanlines" aria-hidden="true"></div>}
+    <div class="vignette" aria-hidden="true"></div>
+
+    {/* main is the camera housing: in tunnel mode it goes fixed and carries the
+        `perspective`, and .camera is the 3D rendering context the act planes
+        are sorted in. Both are inert in the base stylesheet, so with no JS —
+        or under reduced motion — this is an ordinary document that scrolls. */}
+    <main id="main">
+      <div class="camera">
+        <slot />
+      </div>
+    </main>
+
+    {/* The shaft has no height of its own once main is fixed, so this is what
+        the document actually scrolls. tunnel.ts sets its height from the
+        schedule it builds. */}
+    {instrument && <div class="shaft-spacer" aria-hidden="true"></div>}
+
+    {instrument && <Cursor client:only="react" />}
+    {instrument && <Sound client:idle />}
+
+    {instrument && <script src="../scripts/app.ts"></script>}
+  </body>
+</html>

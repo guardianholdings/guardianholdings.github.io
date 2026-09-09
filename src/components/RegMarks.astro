@@ -1,0 +1,48 @@
+---
+/**
+ * Registration crosshairs — four corners plus top and bottom centre. Borrowed
+ * from the print-proof language the reference sites use; they give the viewport
+ * a frame without drawing a box. Hidden below 768px, where they crowd.
+ */
+/* Each mark carries the boneness of the band it sits in. The scalar rides the
+   same inline style as the position so there is one declaration per mark. */
+const TOP = '--gg: var(--g-top, 0);';
+const BOT = '--gg: var(--g-bot, 0);';
+
+const marks = [
+  { class: 'tl', style: `${TOP} top: 18px; left: 18px` },
+  { class: 'tr', style: `${TOP} top: 18px; right: 18px` },
+  { class: 'bl', style: `${BOT} bottom: 18px; left: 18px` },
+  { class: 'br', style: `${BOT} bottom: 18px; right: 18px` },
+  { class: 'tc', style: `${TOP} top: 18px; left: 50%; transform: translateX(-50%)` },
+  { class: 'bc', style: `${BOT} bottom: 18px; left: 50%; transform: translateX(-50%)` },
+];
+---
+<div class="regmarks" aria-hidden="true">
+  {marks.map((m) => (
+    <svg class:list={['regmark', 'gh-reground', m.class]} style={m.style} viewBox="0 0 16 16" fill="none">
+      <path d="M8 0v16M0 8h16" stroke="currentColor" stroke-width="1" />
+    </svg>
+  ))}
+</div>
+
+<style>
+  .regmarks {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    pointer-events: none;
+  }
+  /* Colour lives on the mark, not the container: an inherited computed colour
+     cannot be re-shadowed by a child, and each mark needs its own band. Bone
+     ink at 28% on a bone ground is 1.00:1 — the marks would vanish outright. */
+  .regmark {
+    position: fixed;
+    width: 16px;
+    height: 16px;
+    color: var(--hairline-strong);
+  }
+  @media (max-width: 767px) {
+    .regmarks { display: none; }
+  }
+</style>

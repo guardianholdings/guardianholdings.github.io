@@ -1,0 +1,53 @@
+---
+/**
+ * The persistent field layer.
+ *
+ * Mounted as a direct child of <body>, never inside an act — a pinned element
+ * gets a transform, and a transformed ancestor becomes the containing block for
+ * fixed descendants, which would make this scroll away with the pin. For the
+ * same reason: do not add transform, filter, backdrop-filter, perspective,
+ * will-change or contain to any ancestor of this element.
+ */
+import Field from '../islands/field/Field';
+---
+<div class="field" aria-hidden="true">
+  <!-- Stands in whenever WebGL is unavailable, refused or lost. -->
+  <svg class="field__fallback gh-reground" viewBox="0 0 1200 700" fill="none" preserveAspectRatio="xMidYMid slice">
+    {Array.from({ length: 40 }).map((_, i) => (
+      <line
+        x1={i * 30}
+        y1={350 - 120 * Math.exp(-(((i - 14) / 4) ** 2)) - 60 * Math.exp(-(((i - 27) / 6) ** 2))}
+        x2={i * 30}
+        y2="620"
+        stroke="currentColor"
+        stroke-width="1"
+      />
+    ))}
+  </svg>
+
+  <Field client:only="react" />
+</div>
+
+<style>
+  .field {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    /* No transform / filter / contain here — see the note above. */
+  }
+  .field__canvas { position: absolute; inset: 0; }
+  .field__fallback {
+    --gg: var(--bone-cover, 0);
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    color: var(--ink-dim);
+    opacity: 0.28;
+    transition: opacity 600ms var(--ease-out-quart);
+  }
+  .field[data-field-live] .field__fallback { opacity: 0; }
+  /* Once the real field is up it covers the fallback; the fallback stays in the
+     DOM so a lost context reveals it again without a re-render. */
+</style>

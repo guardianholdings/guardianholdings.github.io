@@ -1,0 +1,225 @@
+/* Reticle cursor — The Observatory
+   Owned by the cursor island (src/islands/cursor/Cursor.tsx). Imported by the island only.
+   All motion here is state → state (240ms, ease-out-expo). Per-frame movement is written
+   as inline transforms by the island; nothing in this file animates position. */
+
+/* Native cursor is hidden while the island is active; form fields and iframes keep theirs. */
+html.has-custom-cursor,
+html.has-custom-cursor * {
+  cursor: none !important;
+}
+html.has-custom-cursor :is(input, textarea, select, iframe, [contenteditable=""], [contenteditable="true"]),
+html.has-custom-cursor :is(input, textarea, select, [contenteditable=""], [contenteditable="true"]) * {
+  cursor: auto !important;
+}
+
+/* The cursor follows the pointer, so strictly it wants the boneness at its own
+   Y. That would mean writing a per-frame variable from the cursor's rAF; a
+   steep ramp on the whole-viewport coverage is one line and only differs during
+   the ~0.5s the edge is actually crossing. */
+.gh-cursor {
+  --gg: clamp(0, calc((var(--bone-cover, 0) - 0.35) * 4), 1);
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  contain: layout style;
+  color: var(--ink);
+  --gh-cursor-ease: var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+  --gh-cursor-dur: 240ms;
+}
+
+/* ---------- reticle (follows the pointer) ---------- */
+.gh-cursor__reticle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  will-change: transform;
+  opacity: 1;
+  transition: opacity var(--gh-cursor-dur) var(--gh-cursor-ease);
+}
+
+.gh-cursor__ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.9;
+  transition:
+    width var(--gh-cursor-dur) var(--gh-cursor-ease),
+    height var(--gh-cursor-dur) var(--gh-cursor-ease),
+    opacity var(--gh-cursor-dur) var(--gh-cursor-ease);
+}
+
+.gh-cursor__cross {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  opacity: 0.7;
+  transition: opacity var(--gh-cursor-dur) var(--gh-cursor-ease);
+}
+.gh-cursor__cross line {
+  stroke: currentColor;
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.gh-cursor__dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--signal-hi);
+  transform: translate(-50%, -50%);
+  transition: transform var(--gh-cursor-dur) var(--gh-cursor-ease);
+}
+
+.gh-cursor__label {
+  position: absolute;
+  left: 18px;
+  top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  opacity: 0;
+  transform: translate3d(0, 4px, 0);
+  transition:
+    opacity var(--gh-cursor-dur) var(--gh-cursor-ease),
+    transform var(--gh-cursor-dur) var(--gh-cursor-ease);
+}
+.gh-cursor__label::before {
+  content: '';
+  display: block;
+  width: 10px;
+  height: 1px;
+  background: var(--signal-hi);
+  flex: none;
+}
+
+/* ---------- corner brackets (lock-on frame) ---------- */
+.gh-cursor__frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  will-change: transform, width, height;
+  opacity: 0;
+  color: var(--ink);
+  transition: opacity var(--gh-cursor-dur) var(--gh-cursor-ease);
+}
+.gh-cursor__corner {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 0 solid currentColor;
+}
+.gh-cursor__corner--tl { top: 0; left: 0; border-top-width: 1px; border-left-width: 1px; }
+.gh-cursor__corner--tr { top: 0; right: 0; border-top-width: 1px; border-right-width: 1px; }
+.gh-cursor__corner--br { bottom: 0; right: 0; border-bottom-width: 1px; border-right-width: 1px; }
+.gh-cursor__corner--bl { bottom: 0; left: 0; border-bottom-width: 1px; border-left-width: 1px; }
+
+/* ---------- states (toggled on .gh-cursor by the island) ---------- */
+
+/* pointer left the window, touch input, or tab hidden */
+.gh-cursor.is-hidden .gh-cursor__reticle,
+.gh-cursor.is-hidden .gh-cursor__frame {
+  opacity: 0;
+  transition-duration: 120ms;
+}
+
+/* hovering a form field or iframe: the native cursor takes over */
+.gh-cursor.is-native .gh-cursor__reticle,
+.gh-cursor.is-native .gh-cursor__frame {
+  opacity: 0;
+}
+
+/* a, button, [role=button]: the ring closes to a small dot */
+.gh-cursor.is-dot .gh-cursor__ring {
+  width: 8px;
+  height: 8px;
+  opacity: 1;
+}
+.gh-cursor.is-dot .gh-cursor__cross {
+  opacity: 0;
+}
+
+/* pointer pressed */
+.gh-cursor.is-down .gh-cursor__ring {
+  width: 20px;
+  height: 20px;
+}
+.gh-cursor.is-dot.is-down .gh-cursor__ring {
+  width: 6px;
+  height: 6px;
+}
+.gh-cursor.is-down .gh-cursor__dot {
+  transform: translate(-50%, -50%) scale(1.5);
+}
+
+/* locked onto [data-cursor="target"]: ring and crosshair give way to the brackets */
+.gh-cursor.is-locked .gh-cursor__ring {
+  width: 44px;
+  height: 44px;
+  opacity: 0;
+}
+.gh-cursor.is-locked .gh-cursor__cross {
+  opacity: 0;
+}
+.gh-cursor.is-locked .gh-cursor__frame {
+  opacity: 1;
+  animation: gh-cursor-lock-flash 900ms var(--gh-cursor-ease) both;
+}
+@keyframes gh-cursor-lock-flash {
+  from { color: var(--signal-hi); }
+  to { color: var(--ink); }
+}
+
+/* data-cursor-label present on the hovered element */
+.gh-cursor.has-label .gh-cursor__label {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+.gh-cursor.is-hidden .gh-cursor__label,
+.gh-cursor.is-native .gh-cursor__label {
+  opacity: 0;
+}
+
+/* ---------- magnetic elements ---------- */
+/* Offsets are written inline by the island while the pointer is near; on leave the inline
+   transform is cleared and this longer transition carries the element home. */
+[data-magnetic] {
+  will-change: transform;
+  transition: transform 480ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+}
+[data-magnetic].is-magnetized {
+  transition-duration: 140ms;
+}
+
+/* ---------- reduced motion: no transitions anywhere in the layer ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .gh-cursor,
+  .gh-cursor *,
+  [data-magnetic] {
+    transition: none !important;
+    animation: none !important;
+  }
+}

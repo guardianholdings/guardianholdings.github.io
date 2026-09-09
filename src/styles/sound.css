@@ -1,0 +1,59 @@
+/* The sound toggle. Bottom-centre, deliberately small — it should be findable
+   and never insistent. */
+/* Sits in the bottom chrome band, so it follows --g-bot. Without this its
+   var(--bg) fill stays near-black and it reads as a dark pill stuck on a bone
+   page. */
+.sound {
+  --gg: var(--g-bot, 0);
+  position: fixed;
+  /* Bottom-RIGHT, one row above the HUD line. Centred, it sat squarely on the
+     prose column — every act's copy is left-aligned and runs past the middle,
+     so a centred fixed control occludes text at every viewport width. */
+  right: var(--gutter);
+  bottom: 56px;
+  z-index: 58;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  /* Solid, not transparent: this is fixed, so copy scrolls underneath it at
+     every viewport height. The HUD solves the same problem with a scrim. */
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  color: var(--ink-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.sound:hover { color: var(--ink); border-color: var(--hairline-strong); }
+.sound[aria-pressed='true'] { color: var(--ink); border-color: var(--signal); }
+
+.sound__bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+.sound__bars i {
+  width: 2px;
+  height: 3px;
+  background: currentColor;
+  transition: height var(--dur-fast) var(--ease-out-quart);
+}
+/* While it is on, the heights are written from the first four modal envelopes
+   — the same numbers driving the four lowest partials you are hearing. There
+   is no keyframe here on purpose: a canned equaliser loop would be the one
+   decorative, non-live readout on a site whose whole argument is that its
+   readouts are real. */
+.sound[aria-pressed='true'] .sound__bars i {
+  background: var(--signal);
+  /* Written every 30th of a second; a transition on top would only smear it. */
+  transition: none;
+}
+
+@media (max-width: 767px) {
+  .sound { bottom: 64px; right: 16px; }
+}
