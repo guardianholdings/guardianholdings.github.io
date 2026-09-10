@@ -104,6 +104,31 @@ const jsonLd = {
     <link rel="preload" href={archivoLatin} as="font" type="font/woff2" crossorigin />
     <Font cssVariable="--font-mono-src" preload />
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+
+    {/* Google Analytics 4. Both tags are is:inline: Astro would otherwise take
+        the second one into its module graph, where `async` is meaningless and
+        the gtag() shim would no longer be on window for the loader to find.
+
+        Production only. astro dev would otherwise report every local reload as
+        a real session, and the first thing anyone does with a fresh property is
+        trust the numbers.
+
+        NOT consent-gated. This fires on load and sets cookies, which in the EU
+        normally requires consent first; the site has no banner and
+        /privacy-policy does not name Google Analytics. Deliberate as of
+        2026-09-10 and the client's call, not an oversight. */}
+    {import.meta.env.PROD && (
+      <>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-L1Z5N4M3ET" is:inline></script>
+        <script is:inline>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'G-L1Z5N4M3ET');
+        </script>
+      </>
+    )}
   </head>
 
   <body data-instrument={instrument ? '' : undefined}>
