@@ -426,6 +426,12 @@ export const FORM = {
   emailRequired: "An email address is required.",
   emailInvalid: "That address will not reach us.",
   messageRequired: "A message is required.",
+  /** The consent tick. There is no cookie banner on this site by decision, so
+      this box is the ONE place a visitor agrees to anything, and it covers only
+      what they are sending here — not the analytics. Worded as what the company
+      may do, because that is what is being agreed to. */
+  consentLabel: "Guardian Holdings JSC may keep this message and my address in order to reply.",
+  consentRequired: "Tick the box to send the message.",
   botCheck: "Complete the check under the message, then send.",
   sending: "Sending.",
   sent: "Sent. A reply comes to the address you gave.",

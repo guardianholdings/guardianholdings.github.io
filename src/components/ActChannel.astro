@@ -12,7 +12,7 @@
  * draft it has always had. That is deliberate: the site can ship before the
  * Worker exists, and pressing Send is never a no-op.
  */
-import { CHANNEL, COMPANY } from '../data/content';
+import { CHANNEL, COMPANY, FORM } from '../data/content';
 import { bedSources } from '../lib/audio-bed';
 
 /* The attribution below is a condition of the recording's licence, so it is
@@ -111,6 +111,21 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
           {turnstileKey && (
             <div class="channel__turnstile cf-turnstile" data-sitekey={turnstileKey} data-theme="dark"></div>
           )}
+
+          {/* The only consent gate on the site. No banner interrupts anyone, so
+              nothing is agreed to until a visitor actually sends something —
+              and then only about the message itself. Required on both paths:
+              validated here for the JS path and re-checked in the Worker, which
+              is what the no-JS POST hits. */}
+          <label class="field consent">
+            <span class="consent__row">
+              <input type="checkbox" name="consent" id="field-consent" value="yes" required aria-describedby="error-consent" />
+              <span class="mono consent__text">
+                {FORM.consentLabel} <a href="/privacy-policy/">What we do with it</a>
+              </span>
+            </span>
+            <p class="field__error" id="error-consent" data-error-for="consent" hidden></p>
+          </label>
 
           {/* ABOVE the button, deliberately. It reports on the press, and below
               the button on a phone it was off the bottom of the screen at the
@@ -260,6 +275,13 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
   .field--roles legend { float: left; width: 100%; margin-bottom: 8px; }
   .radio { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--ink-muted); }
   .radio input { accent-color: var(--signal); }
+
+  .consent__row { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+  .consent input { accent-color: var(--signal); margin: 2px 0 0; flex: none; }
+  .consent__text { color: var(--ink-muted); max-width: 46ch; line-height: 1.6; letter-spacing: 0.06em; }
+  .consent__text a { color: var(--ink-muted); text-decoration: underline; text-underline-offset: 4px; }
+  .consent__text a:hover { color: var(--signal-hi); }
+  .consent input:focus-visible { outline: 2px solid var(--signal-hi); outline-offset: 3px; }
 
   .channel__note { color: var(--ink-dim); max-width: 44ch; line-height: 1.6; letter-spacing: 0.08em; }
   /* Success and failure used to render identically — same element, same class,
@@ -481,12 +503,15 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
     // Clear anything left over from a previous submit, or a now-valid field
     // keeps reporting the old complaint.
-    for (const key of ['name', 'email', 'message']) clearError(key);
+    for (const key of ['name', 'email', 'message', 'consent']) clearError(key);
 
     if (!name) return void complain('name', FORM.nameRequired);
     if (!email) return void complain('email', FORM.emailRequired);
     if (!field('email')?.validity.valid) return void complain('email', FORM.emailInvalid);
     if (!message) return void complain('message', FORM.messageRequired);
+    // Last, so the visitor is not asked to agree to sending something they have
+    // not finished writing.
+    if (!data.get('consent')) return void complain('consent', FORM.consentRequired);
 
     if (!ENDPOINT) {
       const opened = draft(name, email, role, message);

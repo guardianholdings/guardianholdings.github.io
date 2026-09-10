@@ -237,6 +237,24 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
   if (!name || !email || !message) {
     return fail('Name, address and message are all required.', 400);
   }
+
+  /* The consent tick. This site has no cookie banner by decision, so the box on
+     the form is the only thing a visitor ever agrees to, and it is checked here
+     as well as in the page script — a form-encoded POST arriving with no JS
+     never ran that script, and `novalidate` on the <form> means the browser did
+     not enforce `required` either.
+
+     No consent flag is written into the mail. The subject and body are a
+     contract with admin/src/lib/enquiries.ts and changing their shape breaks
+     the parser; it is also unnecessary, because an enquiry cannot exist without
+     this check passing, and the message carries its own date. */
+  if (!data.consent) {
+    return fail(
+      'The message was not sent, because the agreement box was not ticked.',
+      400,
+      'Nothing was sent.',
+    );
+  }
   if (!EMAIL_RE.test(email)) return fail('That address will not reach you.', 400);
   if (name.length > LIMITS.name || email.length > LIMITS.email || message.length > LIMITS.message) {
     return fail('That message is too long to send.', 413);
