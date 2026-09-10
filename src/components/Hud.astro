@@ -283,12 +283,22 @@ import { EXCHANGES } from '../lib/exchanges';
   // Reduced motion never builds the cavity, so this would be a permanent 20Hz
   // loop writing six identical values — the opposite of what the preference
   // asks for.
-  if (bars.length && motionAllowed()) {
+  if (bars.length) {
     let last = 0;
     let peakShown = -1;
+    let handle = 0;
 
     const draw = (now: number) => {
-      requestAnimationFrame(draw);
+      // Re-checked every frame, not once at module scope. This loop lives
+      // outside gsap.context, so app.ts's teardown never reverted it: turning
+      // Reduce Motion on AFTER load tore the cavity down and left this running
+      // for ever, reading getResonance() against dead state — precisely the
+      // permanent 20Hz loop the note above says must not exist.
+      if (!motionAllowed()) {
+        handle = 0;
+        return;
+      }
+      handle = requestAnimationFrame(draw);
       if (now - last < 1000 / BARS_HZ) return;
       last = now;
 
@@ -314,6 +324,16 @@ import { EXCHANGES } from '../lib/exchanges';
       }
     };
 
-    requestAnimationFrame(draw);
+    // Symmetric in both directions: stopping is above, restarting is here, so
+    // turning Reduce Motion back off brings the bars back without a reload.
+    const start = (): void => {
+      if (!handle && motionAllowed()) handle = requestAnimationFrame(draw);
+    };
+    window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', start);
+    new MutationObserver(start).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-motion'],
+    });
+    start();
   }
 </script>
