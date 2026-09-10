@@ -30,15 +30,35 @@ main = "worker-entry.ts"
 # the live domain.
 workers_dev = true
 
+# Public, non-secret configuration for the contact endpoint. The Resend API key
+# is a SECRET and is never written here:
+#   pnpm dlx wrangler secret put RESEND_API_KEY
+#   pnpm dlx wrangler secret put TURNSTILE_SECRET   # optional; unset skips the bot check
+[vars]
+CONTACT_TO = "petkoff@guardianholdingsjsc.com"
+# MUST be a domain verified in Resend. The `send.` subdomain is deliberate: it
+# leaves the root MX that delivers company mail to iCloud completely alone.
+CONTACT_FROM = "Guardian Holdings JSC <form@send.guardianholdingsjsc.com>"
+
+# The acknowledgement mail means a stranger can make this domain send a message
+# to any address they type, so the endpoint is rate limited per IP as well as
+# honeypotted and timed. Turnstile is the real answer and is still unset.
+[[unsafe.bindings]]
+name = "CONTACT_LIMIT"
+type = "ratelimit"
+namespace_id = "2001"
+simple = { limit = 5, period = 60 }
+
 [assets]
 directory = "./dist"
 binding = "ASSETS"
-# The ONE path the Worker runs for. Cloudflare's asset store answers Range with
-# 200 and the whole file, and iOS Safari's media element requires real byte
-# ranges — so /audio/* is proxied through worker-entry.ts, which adds them.
-# Everything else on the site bypasses the Worker entirely and stays free and
-# unmetered, which is the whole reason this host was chosen.
-run_worker_first = ["/audio/*"]
+# The only paths the Worker runs for. /audio/* because Cloudflare's asset store
+# answers Range with 200 and the whole file while iOS Safari's media element
+# requires real byte ranges; /api/* because the contact endpoint now lives on
+# this origin rather than in a Worker of its own. Everything else bypasses the
+# Worker entirely and stays free and unmetered, which is why this host was
+# chosen in the first place.
+run_worker_first = ["/audio/*", "/api/*"]
 # Astro emits privacy-policy/index.html. This is the default, and it 307s
 # /privacy-policy to /privacy-policy/ rather than serving it in place —
 # measured, not assumed. No visitor meets that hop: the site's own link, the

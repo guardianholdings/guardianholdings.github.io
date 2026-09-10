@@ -274,9 +274,12 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
     });
   }
 
-  /* Empty at build time means no backend is wired, and the form keeps its
-     original mail-draft behaviour. */
-  const ENDPOINT: string = import.meta.env.PUBLIC_CONTACT_ENDPOINT ?? '';
+  /* Same-origin by default: the endpoint is served by the site's own Worker
+     (signal/worker/contact.ts), so there is nothing to configure per
+     environment and no cross-origin preflight. The env var stays as an
+     override for pointing a local build at a deployed endpoint. Set it to the
+     empty string to force the original mail-draft behaviour. */
+  const ENDPOINT: string = import.meta.env.PUBLIC_CONTACT_ENDPOINT ?? '/api/contact';
 
   /* Bots submit instantly. The Worker judges this together with the honeypot
      and answers 200 either way, so a bot never learns which one caught it. */
@@ -372,6 +375,16 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
           elapsed: Date.now() - readyAt,
         }),
       });
+      // 503 + unconfigured is the endpoint saying "no mail account yet", which
+      // is a deployment state and not a fault. The visitor gets the prepared
+      // draft with no failure message, exactly as if no backend were wired —
+      // because as far as they are concerned, none is.
+      if (res.status === 503) {
+        const body = (await res.json().catch(() => null)) as { unconfigured?: boolean } | null;
+        if (body?.unconfigured) {
+          return void say(draft(name, email, role, message) ? FORM.mailOpened : FORM.mailFailed);
+        }
+      }
       if (!res.ok) throw new Error(String(res.status));
       form.reset();
       window.turnstile?.reset();

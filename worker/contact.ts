@@ -1,0 +1,226 @@
+/**
+ * The contact endpoint, at /api/contact on the site's own origin.
+ *
+ * It lived in a separate Worker (repo root `worker/`) that was written but
+ * never deployed, so the form has only ever opened a mail draft. Now that the
+ * site itself runs a Worker — added for the /audio/* range shim — the endpoint
+ * belongs here: same origin, so there is no CORS preflight, no ALLOWED_ORIGINS
+ * list to keep in step with the domains, and one deploy instead of two.
+ *
+ * TWO MAILS GO OUT PER SUBMISSION:
+ *   1. the enquiry, to CONTACT_TO, with the visitor as Reply-To;
+ *   2. an acknowledgement, to the visitor, with CONTACT_TO as Reply-To.
+ * The second is what FORM.sent has always promised — "Sent. A reply comes to
+ * the address you gave." — and until now nothing delivered it.
+ *
+ * THE ENQUIRY FORMAT IS A CONTRACT. `admin/src/lib/enquiries.ts` parses it back
+ * by splitting on the em-dash line:
+ *   subject: `Investor · ${name}` | `Founder · ${name}`
+ *   body:    `${message}\n\n—\n${name}\n${email}\n${role}`
+ * It is unchanged here on purpose. Change it and the admin inbox stops reading
+ * its own mail; the two move together or not at all.
+ */
+
+export interface ContactEnv {
+  /** `wrangler secret put RESEND_API_KEY`. Unset is a supported state — see below. */
+  RESEND_API_KEY?: string;
+  /** `wrangler secret put TURNSTILE_SECRET`. Unset skips the bot check. */
+  TURNSTILE_SECRET?: string;
+  CONTACT_TO: string;
+  CONTACT_FROM: string;
+  /** Cloudflare rate-limit binding, keyed by IP. */
+  CONTACT_LIMIT?: { limit(o: { key: string }): Promise<{ success: boolean }> };
+}
+
+const LIMITS = { name: 120, email: 200, message: 5000 } as const;
+/** A form filled faster than this was not filled by a person. */
+const MIN_FILL_MS = 2_000;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const json = (body: unknown, status: number) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+  });
+
+/** Verify a Turnstile token. True when no secret is configured. */
+async function passesTurnstile(env: ContactEnv, token: unknown, ip: string | null): Promise<boolean> {
+  if (!env.TURNSTILE_SECRET) return true;
+  if (typeof token !== 'string' || !token) return false;
+  const form = new FormData();
+  form.append('secret', env.TURNSTILE_SECRET);
+  form.append('response', token);
+  if (ip) form.append('remoteip', ip);
+  try {
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: form,
+    });
+    return ((await res.json()) as { success?: boolean }).success === true;
+  } catch {
+    return false;
+  }
+}
+
+interface Mail {
+  from: string;
+  to: string[];
+  reply_to: string[];
+  subject: string;
+  text: string;
+}
+
+async function send(key: string, mail: Mail): Promise<boolean> {
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify(mail),
+    });
+    if (res.ok) return true;
+    // Logged for `wrangler tail`, never returned: it can carry account detail
+    // and the visitor can act on none of it.
+    console.error('resend', res.status, await res.text().catch(() => ''));
+    return false;
+  } catch (err) {
+    console.error('resend threw', String(err));
+    return false;
+  }
+}
+
+/**
+ * The acknowledgement.
+ *
+ * Deliberately NOT "we will reach out soon". The copy deck retired every
+ * timeframe promise on this property — it called the old "We'll be in touch
+ * within 24 hours" the promise most likely to be broken — and it bans future
+ * tense about Guardian, because "we will" is a promise where the present tense
+ * is a description of how the firm actually works. These three sentences are
+ * the deck's own approved "what happens next" strings, which say something
+ * stronger than a deadline: a person reads it, and the answer is written and
+ * reasoned either way.
+ */
+function acknowledgement(name: string, message: string, to: string): string {
+  return `${name},
+
+Thank you — your message reached us.
+
+Every message is read by a principal, not a mailbox. It lands on the desk that
+does the work itself. Yes or no, you get a written answer with the reason.
+
+You can reply to this email directly; it reaches the same desk.
+
+This is what you sent:
+
+${message}
+
+—
+Guardian Holdings JSC
+Simeonovsko Shose 33, fl. 3, Sofia, Bulgaria
+${to}
+https://guardianholdingsjsc.com`;
+}
+
+export async function handleContact(request: Request, env: ContactEnv): Promise<Response> {
+  // A health check, so a deploy can be verified without sending mail.
+  if (request.method === 'GET') {
+    return json(
+      {
+        ok: true,
+        service: 'guardian-contact',
+        configured: Boolean(env.RESEND_API_KEY),
+        botCheck: Boolean(env.TURNSTILE_SECRET),
+        rateLimited: typeof env.CONTACT_LIMIT?.limit === 'function',
+        hasIp: Boolean(request.headers.get('cf-connecting-ip')),
+        to: env.CONTACT_TO,
+      },
+      200,
+    );
+  }
+  if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed.' }, 405);
+
+  // Same-origin only. The endpoint now shares the site's origin, so this is an
+  // exact match rather than an allow-list that has to track every domain.
+  const origin = request.headers.get('origin');
+  if (origin && origin !== new URL(request.url).origin) {
+    return json({ ok: false, error: 'Origin not allowed.' }, 403);
+  }
+
+  let data: Record<string, unknown>;
+  try {
+    data = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return json({ ok: false, error: 'Malformed request.' }, 400);
+  }
+
+  // Honeypot and timing. Both answer 200 on purpose: a bot that learns which
+  // signal tripped it is a bot that gets past the next version. Note this is
+  // ALSO the branch that stops the acknowledgement being used as an amplifier,
+  // because nothing is sent from here.
+  const trap = String(data.company ?? '').trim();
+  const elapsed = Number(data.elapsed ?? 0);
+  if (trap || (Number.isFinite(elapsed) && elapsed > 0 && elapsed < MIN_FILL_MS)) {
+    return json({ ok: true }, 200);
+  }
+
+  const ip = request.headers.get('cf-connecting-ip');
+  if (env.CONTACT_LIMIT) {
+    // Falling back to a shared key rather than skipping: an absent
+    // CF-Connecting-IP used to mean NO limit at all, which is exactly the
+    // request an abuser would craft. A shared bucket is blunt, but the failure
+    // mode is "too strict for a rare anonymous caller", not "wide open".
+    const { success } = await env.CONTACT_LIMIT.limit({ key: ip ?? 'no-ip' });
+    if (!success) return json({ ok: false, error: 'Too many messages. Try again shortly.' }, 429);
+  }
+
+  if (!(await passesTurnstile(env, data.token, ip))) {
+    return json({ ok: false, error: 'The bot check did not pass.' }, 400);
+  }
+
+  // Newlines stripped from single-line fields: they end up in a subject and a
+  // Reply-To, where a stray line break is a header injection.
+  const clean = (v: unknown) => String(v ?? '').replace(/[\r\n]+/g, ' ').trim();
+  const name = clean(data.name);
+  const email = clean(data.email);
+  const message = String(data.message ?? '').replace(/\r\n/g, '\n').trim();
+
+  if (!name || !email || !message) {
+    return json({ ok: false, error: 'Name, address and message are all required.' }, 400);
+  }
+  if (!EMAIL_RE.test(email)) return json({ ok: false, error: 'That address will not reach you.' }, 400);
+  if (name.length > LIMITS.name || email.length > LIMITS.email || message.length > LIMITS.message) {
+    return json({ ok: false, error: 'That message is too long to send.' }, 413);
+  }
+
+  // Unset key is a SUPPORTED state, not an error: the site is deployed before
+  // the mail account exists, and this is what tells the form to fall back to
+  // the prepared mail draft silently rather than showing the visitor a failure.
+  if (!env.RESEND_API_KEY) return json({ ok: false, unconfigured: true }, 503);
+
+  const isInvestor = /investor/i.test(clean(data.role));
+  const role = isInvestor ? 'An investor' : 'A founder';
+
+  // 1. The enquiry. If this does not go, nothing else matters.
+  const delivered = await send(env.RESEND_API_KEY, {
+    from: env.CONTACT_FROM,
+    to: [env.CONTACT_TO],
+    reply_to: [email],
+    subject: `${isInvestor ? 'Investor' : 'Founder'} · ${name}`,
+    text: `${message}\n\n—\n${name}\n${email}\n${role}`,
+  });
+  if (!delivered) return json({ ok: false, error: 'The message did not send.' }, 502);
+
+  // 2. The acknowledgement. Sent after, and its failure is NOT the visitor's
+  // problem: the enquiry is already on the desk, so reporting a failure here
+  // would invite a duplicate submission of a message that arrived fine.
+  const acked = await send(env.RESEND_API_KEY, {
+    from: env.CONTACT_FROM,
+    to: [email],
+    reply_to: [env.CONTACT_TO],
+    subject: 'Guardian Holdings JSC — your message',
+    text: acknowledgement(name, message, env.CONTACT_TO),
+  });
+  if (!acked) console.error('acknowledgement failed for', email);
+
+  return json({ ok: true, acknowledged: acked }, 200);
+}

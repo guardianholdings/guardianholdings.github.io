@@ -1,5 +1,8 @@
 /**
- * Byte-range shim for /audio/*, and nothing else.
+ * The site's Worker. Two jobs, both narrow: it answers /api/contact, and it
+ * adds byte ranges to /audio/*. Everything else on the site never reaches it.
+ *
+ * ── Byte-range shim for /audio/* ───────────────────────────────────────────
  *
  * WHY THIS EXISTS. Cloudflare Workers Static Assets answers a `Range` request
  * with `200` and the whole body — no `Accept-Ranges`, no `206`. Measured on
@@ -22,8 +25,10 @@
  * visitor actually presses the sound control.
  */
 
+import { handleContact, type ContactEnv } from './worker/contact';
+
 /** Structural, so this file needs no Cloudflare type package. */
-interface Env {
+interface Env extends ContactEnv {
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
@@ -38,6 +43,13 @@ function unsatisfiable(total: number): Response {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    // The contact endpoint. It shares the site's origin now, which is the whole
+    // reason it moved here from its own Worker: no preflight, no allow-list of
+    // domains to keep in step, one deploy. See worker/contact.ts.
+    if (new URL(request.url).pathname === '/api/contact') {
+      return handleContact(request, env);
+    }
+
     const asset = await env.ASSETS.fetch(request);
 
     // Anything the asset layer did not serve as a plain 200 — a 404, a
