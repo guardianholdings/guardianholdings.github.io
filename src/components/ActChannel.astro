@@ -35,15 +35,45 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
       <div class="channel__form-col">
         <h3 class="h-section channel__heading" data-anim="lines">{CHANNEL.formHeading}</h3>
 
-        <form class="channel__form" data-contact novalidate>
+        {/* method and action are load-bearing, not decoration. A <form> with
+            neither defaults to GET, so before JS loads — or if the bundle never
+            arrives — submitting put the visitor's name, address, role and whole
+            message into the query string of a page URL, where it lands in
+            browser history, in the Referer header of every subsequent request,
+            and in any proxy log on the way. POST to the real endpoint fixes the
+            leak AND makes the form work with no JavaScript at all: the Worker
+            answers a form-encoded submission with an HTML page. */}
+        <form class="channel__form" method="post" action="/api/contact" data-contact novalidate>
           <label class="field">
             <span class="mono field__label">Name</span>
-            <input class="field__input" type="text" name="name" autocomplete="name" required />
+            <input
+              class="field__input"
+              type="text"
+              name="name"
+              id="field-name"
+              autocomplete="name"
+              required
+              aria-describedby="error-name"
+            />
+            {/* Persistent and in the flow, not a validation bubble. A bubble is
+                transient, is dismissed by the next keystroke, and is announced
+                once if at all; this is read on focus via aria-describedby and
+                stays on screen until the field is fixed. */}
+            <p class="field__error" id="error-name" data-error-for="name" hidden></p>
           </label>
 
           <label class="field">
             <span class="mono field__label">Email</span>
-            <input class="field__input" type="email" name="email" autocomplete="email" required />
+            <input
+              class="field__input"
+              type="email"
+              name="email"
+              id="field-email"
+              autocomplete="email"
+              required
+              aria-describedby="error-email"
+            />
+            <p class="field__error" id="error-email" data-error-for="email" hidden></p>
           </label>
 
           <fieldset class="field field--roles">
@@ -58,7 +88,15 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
           <label class="field">
             <span class="mono field__label">Message</span>
-            <textarea class="field__input field__input--area" name="message" rows="5" required></textarea>
+            <textarea
+              class="field__input field__input--area"
+              name="message"
+              id="field-message"
+              rows="5"
+              required
+              aria-describedby="error-message"
+            ></textarea>
+            <p class="field__error" id="error-message" data-error-for="message" hidden></p>
           </label>
 
           {/* Honeypot. Named like a field a bot wants to fill, hidden from
@@ -74,15 +112,28 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
             <div class="channel__turnstile cf-turnstile" data-sitekey={turnstileKey} data-theme="dark"></div>
           )}
 
+          {/* ABOVE the button, deliberately. It reports on the press, and below
+              the button on a phone it was off the bottom of the screen at the
+              exact moment it had something to say. */}
+          <p class="readout channel__status" data-contact-status role="status" hidden></p>
+
           <button class="door door--primary" type="submit">
-            Send
+            <span data-send-label>Send</span>
             <svg viewBox="0 0 24 8" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square" aria-hidden="true">
               <path d="M0 4h22M18 .5L22 4l-4 3.5" />
             </svg>
           </button>
 
           <p class="readout channel__note">{CHANNEL.formNote}</p>
-          <p class="readout channel__status" data-contact-status role="status" hidden></p>
+
+          {/* The form posts and works without JS, but the bot check does not
+              render without it, so the address is offered as the plain path. */}
+          <noscript>
+            <p class="readout channel__status" data-state="info">
+              This form needs JavaScript for its bot check. Write to
+              <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> instead.
+            </p>
+          </noscript>
         </form>
       </div>
 
@@ -179,7 +230,30 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
     padding: 12px 0;
     transition: border-color var(--dur-fast);
   }
-  .field__input:focus { outline: none; border-bottom-color: var(--signal); }
+  /* The outline stays. `outline: none` used to live here, leaving a 1px change
+     of underline colour as the ONLY focus cue — no cue at all for anyone who
+     cannot separate those two colours — and it silently beat the site's global
+     focus ring, because :where() has zero specificity and this selector does
+     not. Text fields are treated as focus-visible on click too, which is
+     correct: a focused field should say so however it was reached. */
+  .field__input:focus-visible {
+    outline: 2px solid var(--signal-hi);
+    outline-offset: 3px;
+  }
+  .field__input:focus { border-bottom-color: var(--signal); }
+
+  /* Inline, persistent, and referenced by the input's aria-describedby, so it
+     is read on focus rather than announced once and lost. */
+  .field__error {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--signal-hi);
+    margin: 0;
+  }
+  .field__error[hidden] { display: none; }
+  .field__input[aria-invalid='true'] { border-bottom-color: var(--signal-hi); }
   .field__input--area { resize: vertical; }
 
   .field--roles { display: flex; flex-direction: row; align-items: center; gap: 24px; flex-wrap: wrap; }
@@ -188,8 +262,37 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
   .radio input { accent-color: var(--signal); }
 
   .channel__note { color: var(--ink-dim); max-width: 44ch; line-height: 1.6; letter-spacing: 0.08em; }
-  .channel__status { color: var(--signal-hi); max-width: 44ch; line-height: 1.6; letter-spacing: 0.08em; margin-top: -12px; }
+  /* Success and failure used to render identically — same element, same class,
+     same accent colour — so the only difference between "Sent" and "That did
+     not send" was reading the words. The words still carry the meaning for a
+     screen reader; these states carry it for a glance. Differentiated by rule
+     weight and ground as well as hue, because colour alone is not a
+     distinction for everyone. */
+  .channel__status {
+    max-width: 44ch;
+    line-height: 1.6;
+    letter-spacing: 0.08em;
+    margin: 0;
+    padding: 10px 0 10px 16px;
+    border-left: 1px solid var(--hairline-strong);
+    color: var(--ink-muted);
+  }
   .channel__status[hidden] { display: none; }
+  /* In flight. Quiet: nothing has happened yet. */
+  .channel__status[data-state='info'] { color: var(--ink-muted); }
+  /* It sent. The reader is the subject, so the copy sits in reading ink. */
+  .channel__status[data-state='ok'] {
+    color: var(--ink);
+    border-left: 2px solid var(--signal-hi);
+  }
+  /* It did not. Heavier rule, tinted ground, accent text — three signals, not
+     one, and the sentence itself still says what to do next. */
+  .channel__status[data-state='error'] {
+    color: var(--signal-hi);
+    border-left: 2px solid var(--signal-hi);
+    background: var(--signal-dim);
+    padding-right: 16px;
+  }
 
   .channel__meta { display: flex; flex-direction: column; gap: clamp(32px, 4vw, 52px); }
   .channel__block { display: flex; flex-direction: column; gap: 12px; }
@@ -293,26 +396,62 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
   const status = document.querySelector<HTMLElement>('[data-contact-status]');
   const button = form?.querySelector<HTMLButtonElement>('button[type="submit"]') ?? null;
 
-  const say = (text: string) => {
+  const label = button?.querySelector<HTMLElement>('[data-send-label]') ?? null;
+
+  /* `state` drives the visual treatment. The SENTENCE still carries the meaning
+     for a screen reader — the states are so a sighted reader can tell "Sent"
+     from "That did not send" without reading either. */
+  type Tone = 'info' | 'ok' | 'error';
+  const say = (text: string, tone: Tone = 'info') => {
     if (!status) return;
     status.textContent = text;
+    status.dataset.state = tone;
     status.hidden = false;
   };
 
-  /* The browser's own validation bubble, carrying our strings rather than the
-     platform's. Every message says what happened and what to do, then stops —
-     no apology, no "please", no exclamation mark. */
+  /* Disabled AND visibly disabled AND relabelled. It was already disabled for
+     the whole request and looked identical while it was. */
+  const busy = (on: boolean) => {
+    if (button) button.disabled = on;
+    if (label) label.textContent = on ? 'Sending.' : 'Send';
+  };
+
   const field = (name: string) =>
     form?.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
 
+  const errorFor = (name: string) =>
+    form?.querySelector<HTMLElement>(`[data-error-for="${name}"]`) ?? null;
+
+  /* Was reportValidity() alone: a transient platform bubble, dismissed by the
+     next keystroke, announced once if at all, and invisible to anything that
+     reads the page rather than watching it. The message now lives in the
+     document, is wired to the input through aria-describedby so it is read
+     whenever the field takes focus, and the field is marked aria-invalid so
+     the state is exposed as well as the text. Our strings, not the platform's:
+     each says what happened and what to do, then stops. */
   function complain(name: string, message: string): boolean {
     const el = field(name);
     if (!el) return false;
-    el.setCustomValidity(message);
-    el.reportValidity();
-    // Clear on the next edit, or the stale message sticks to the next submit.
-    el.addEventListener('input', () => el.setCustomValidity(''), { once: true });
+    const slot = errorFor(name);
+    if (slot) {
+      slot.textContent = message;
+      slot.hidden = false;
+    }
+    el.setAttribute('aria-invalid', 'true');
+    el.focus();
+    // Clear on the next edit, or a fixed field keeps reporting the old fault.
+    el.addEventListener('input', () => clearError(name), { once: true });
     return true;
+  }
+
+  function clearError(name: string): void {
+    const el = field(name);
+    el?.removeAttribute('aria-invalid');
+    const slot = errorFor(name);
+    if (slot) {
+      slot.textContent = '';
+      slot.hidden = true;
+    }
   }
 
   /* The prepared mail draft. Once the only path, now also the recovery path:
@@ -340,9 +479,9 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
     const role = String(data.get('role') ?? '');
     const message = String(data.get('message') ?? '').trim();
 
-    // Clear any message left over from a previous submit, or a stale custom
-    // validity would make a now-valid field report the old complaint.
-    for (const key of ['name', 'email', 'message']) field(key)?.setCustomValidity('');
+    // Clear anything left over from a previous submit, or a now-valid field
+    // keeps reporting the old complaint.
+    for (const key of ['name', 'email', 'message']) clearError(key);
 
     if (!name) return void complain('name', FORM.nameRequired);
     if (!email) return void complain('email', FORM.emailRequired);
@@ -350,16 +489,17 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
     if (!message) return void complain('message', FORM.messageRequired);
 
     if (!ENDPOINT) {
-      return void say(draft(name, email, role, message) ? FORM.mailOpened : FORM.mailFailed);
+      const opened = draft(name, email, role, message);
+      return void say(opened ? FORM.mailOpened : FORM.mailFailed, opened ? 'ok' : 'error');
     }
 
     // Turnstile's implicit render drops this input into the form itself. Only
     // demand it when the widget is actually on the page.
     const token = String(data.get('cf-turnstile-response') ?? '');
-    if (form.querySelector('.cf-turnstile') && !token) return void say(FORM.botCheck);
+    if (form.querySelector('.cf-turnstile') && !token) return void say(FORM.botCheck, 'error');
 
-    if (button) button.disabled = true;
-    say(FORM.sending);
+    busy(true);
+    say(FORM.sending, 'info');
 
     try {
       const res = await fetch(ENDPOINT, {
@@ -382,18 +522,19 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
       if (res.status === 503) {
         const body = (await res.json().catch(() => null)) as { unconfigured?: boolean } | null;
         if (body?.unconfigured) {
-          return void say(draft(name, email, role, message) ? FORM.mailOpened : FORM.mailFailed);
+          const opened = draft(name, email, role, message);
+          return void say(opened ? FORM.mailOpened : FORM.mailFailed, opened ? 'ok' : 'error');
         }
       }
       if (!res.ok) throw new Error(String(res.status));
       form.reset();
       window.turnstile?.reset();
-      say(FORM.sent);
+      say(FORM.sent, 'ok');
     } catch {
-      say(FORM.sendFailed);
-      if (!draft(name, email, role, message)) say(FORM.mailFailed);
+      say(FORM.sendFailed, 'error');
+      if (!draft(name, email, role, message)) say(FORM.mailFailed, 'error');
     } finally {
-      if (button) button.disabled = false;
+      busy(false);
     }
   });
 </script>

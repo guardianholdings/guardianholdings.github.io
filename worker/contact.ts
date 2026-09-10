@@ -43,6 +43,42 @@ const json = (body: unknown, status: number) =>
     headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
   });
 
+/**
+ * The no-JavaScript path.
+ *
+ * The form carries `method="post" action="/api/contact"`, which is what stops
+ * it defaulting to GET and writing the visitor's message into a URL. But a
+ * plain POST from a browser with no script running lands here expecting a
+ * PAGE, and answering it with raw JSON would trade a privacy bug for a broken
+ * one. So a form-encoded submission gets a real page, and the form works
+ * without JavaScript at all.
+ *
+ * Nothing the visitor typed is echoed back, which is why there is no escaping
+ * here to get wrong.
+ */
+const page = (heading: string, body: string, status: number) =>
+  new Response(
+    `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${heading} — Guardian Holdings JSC</title>
+<meta name="robots" content="noindex">
+<style>
+:root{color-scheme:dark}
+body{margin:0;min-height:100svh;display:grid;align-content:center;justify-items:start;
+gap:20px;max-width:56ch;padding:32px;background:#0a0907;color:#ede8de;
+font:16px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+h1{font-size:1.5rem;font-weight:500;letter-spacing:-0.02em;margin:0}
+p{margin:0;color:#9a9287}
+a{color:#e8503f;text-decoration:underline;text-underline-offset:5px;
+display:inline-block;padding-block:11px}
+</style></head><body>
+<h1>${heading}</h1>
+<p>${body}</p>
+<p><a href="/">Home &rarr;</a></p>
+</body></html>`,
+    { status, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } },
+  );
+
 /** Verify a Turnstile token. True when no secret is configured. */
 async function passesTurnstile(env: ContactEnv, token: unknown, ip: string | null): Promise<boolean> {
   if (!env.TURNSTILE_SECRET) return true;
@@ -139,6 +175,7 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
   }
   if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed.' }, 405);
 
+
   // Same-origin only. The endpoint now shares the site's origin, so this is an
   // exact match rather than an allow-list that has to track every domain.
   const origin = request.headers.get('origin');
@@ -146,11 +183,24 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
     return json({ ok: false, error: 'Origin not allowed.' }, 403);
   }
 
+  /* A form-encoded body means the browser submitted the <form> itself, with no
+     script running. Everything below answers in whichever shape the caller
+     can actually use. */
+  const contentType = request.headers.get('content-type') ?? '';
+  const asPage =
+    contentType.includes('application/x-www-form-urlencoded') ||
+    contentType.includes('multipart/form-data');
+
+  const fail = (message: string, status: number, heading = 'That did not send.') =>
+    asPage ? page(heading, message, status) : json({ ok: false, error: message }, status);
+
   let data: Record<string, unknown>;
   try {
-    data = (await request.json()) as Record<string, unknown>;
+    data = asPage
+      ? (Object.fromEntries((await request.formData()).entries()) as Record<string, unknown>)
+      : ((await request.json()) as Record<string, unknown>);
   } catch {
-    return json({ ok: false, error: 'Malformed request.' }, 400);
+    return fail('Malformed request.', 400);
   }
 
   // Honeypot and timing. Both answer 200 on purpose: a bot that learns which
@@ -160,7 +210,7 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
   const trap = String(data.company ?? '').trim();
   const elapsed = Number(data.elapsed ?? 0);
   if (trap || (Number.isFinite(elapsed) && elapsed > 0 && elapsed < MIN_FILL_MS)) {
-    return json({ ok: true }, 200);
+    return asPage ? page('Sent.', 'Thank you — your message reached us.', 200) : json({ ok: true }, 200);
   }
 
   const ip = request.headers.get('cf-connecting-ip');
@@ -170,11 +220,11 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
     // request an abuser would craft. A shared bucket is blunt, but the failure
     // mode is "too strict for a rare anonymous caller", not "wide open".
     const { success } = await env.CONTACT_LIMIT.limit({ key: ip ?? 'no-ip' });
-    if (!success) return json({ ok: false, error: 'Too many messages. Try again shortly.' }, 429);
+    if (!success) return fail('Too many messages. Try again shortly.', 429);
   }
 
   if (!(await passesTurnstile(env, data.token, ip))) {
-    return json({ ok: false, error: 'The bot check did not pass.' }, 400);
+    return fail('The bot check did not pass.', 400);
   }
 
   // Newlines stripped from single-line fields: they end up in a subject and a
@@ -185,17 +235,25 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
   const message = String(data.message ?? '').replace(/\r\n/g, '\n').trim();
 
   if (!name || !email || !message) {
-    return json({ ok: false, error: 'Name, address and message are all required.' }, 400);
+    return fail('Name, address and message are all required.', 400);
   }
-  if (!EMAIL_RE.test(email)) return json({ ok: false, error: 'That address will not reach you.' }, 400);
+  if (!EMAIL_RE.test(email)) return fail('That address will not reach you.', 400);
   if (name.length > LIMITS.name || email.length > LIMITS.email || message.length > LIMITS.message) {
-    return json({ ok: false, error: 'That message is too long to send.' }, 413);
+    return fail('That message is too long to send.', 413);
   }
 
   // Unset key is a SUPPORTED state, not an error: the site is deployed before
   // the mail account exists, and this is what tells the form to fall back to
   // the prepared mail draft silently rather than showing the visitor a failure.
-  if (!env.RESEND_API_KEY) return json({ ok: false, unconfigured: true }, 503);
+  if (!env.RESEND_API_KEY) {
+    return asPage
+      ? page(
+          'Write to us directly.',
+          `This form is not connected to a mailbox yet. Send your message to ${env.CONTACT_TO} and it reaches the same desk.`,
+          503,
+        )
+      : json({ ok: false, unconfigured: true }, 503);
+  }
 
   const isInvestor = /investor/i.test(clean(data.role));
   const role = isInvestor ? 'An investor' : 'A founder';
@@ -208,7 +266,7 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
     subject: `${isInvestor ? 'Investor' : 'Founder'} · ${name}`,
     text: `${message}\n\n—\n${name}\n${email}\n${role}`,
   });
-  if (!delivered) return json({ ok: false, error: 'The message did not send.' }, 502);
+  if (!delivered) return fail('The message did not send.', 502);
 
   // 2. The acknowledgement. Sent after, and its failure is NOT the visitor's
   // problem: the enquiry is already on the desk, so reporting a failure here
@@ -222,5 +280,11 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
   });
   if (!acked) console.error('acknowledgement failed for', email);
 
-  return json({ ok: true, acknowledged: acked }, 200);
+  return asPage
+    ? page(
+        'Sent.',
+        'Thank you — your message reached us. A reply comes to the address you gave.',
+        200,
+      )
+    : json({ ok: true, acknowledged: acked }, 200);
 }

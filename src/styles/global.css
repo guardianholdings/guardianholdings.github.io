@@ -444,3 +444,19 @@ main[tabindex='-1']:focus {
 .door--primary { background: var(--signal); border-color: var(--signal); color: var(--ink); }
 .door--primary:hover { background: var(--signal-hi); border-color: var(--signal-hi); color: var(--bg); }
 .door svg { width: 14px; height: 14px; }
+/* The submit button is disabled for the whole flight of the request, and until
+   now looked exactly the same while it was — which invites a second click on a
+   message that is already sending. The label changes to "Sending." in the same
+   moment; see ActChannel's script. */
+.door:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: transparent;
+  border-color: var(--hairline-strong);
+  color: var(--ink-muted);
+}
+.door:disabled:hover {
+  background: transparent;
+  border-color: var(--hairline-strong);
+  color: var(--ink-muted);
+}
