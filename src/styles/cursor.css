@@ -63,6 +63,11 @@ html.has-custom-cursor :is(input, textarea, select, [contenteditable=""], [conte
   top: 0;
   width: 44px;
   height: 44px;
+  /* The global `img, svg { max-width: 100% }` resolves against .gh-cursor__reticle,
+     which is deliberately a 0x0 anchor point — so 100% is 0 and the crosshair
+     computed to 0x44 and painted nothing. Measured on the live site before this
+     line existed; the ring and the dot were carrying the whole reticle. */
+  max-width: none;
   transform: translate(-50%, -50%);
   overflow: visible;
   opacity: 0.7;
