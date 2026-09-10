@@ -141,14 +141,27 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
           <p class="readout channel__note">{CHANNEL.formNote}</p>
 
-          {/* The form posts and works without JS, but the bot check does not
-              render without it, so the address is offered as the plain path. */}
-          <noscript>
-            <p class="readout channel__status" data-state="info">
-              This form needs JavaScript for its bot check. Write to
-              <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> instead.
-            </p>
-          </noscript>
+          {/* Only when there IS a bot check to fail. Turnstile renders from its
+              own script, so with no JS the widget never appears and the Worker
+              rejects the submission — that is worth warning about, and the
+              address is the plain path around it.
+
+              With no key set there is nothing to warn about: the form is a
+              plain POST to /api/contact, the Worker answers a form-encoded
+              submission with an HTML page, and `required` on the consent box is
+              enforced server-side precisely because `novalidate` means the
+              browser will not do it. Telling a no-JS visitor the form needs
+              JavaScript, while the form works, sends them away from something
+              that would have worked. This block and the widget above appear and
+              vanish together, on the same condition. */}
+          {turnstileKey && (
+            <noscript>
+              <p class="readout channel__status" data-state="info">
+                This form needs JavaScript for its bot check. Write to
+                <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> instead.
+              </p>
+            </noscript>
+          )}
         </form>
       </div>
 
