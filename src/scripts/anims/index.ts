@@ -23,6 +23,15 @@ import * as fadeUp from './fade-up';
 
 const modules = [word, lines, scramble, counter, draw, fadeUp];
 
+/**
+ * Put back decoration the document was authored with that a context revert
+ * stripped. For the reduced-motion path, where no module initialises and the
+ * document is meant to stand exactly as written.
+ */
+export function restoreAuthored(root: ParentNode): void {
+  scramble.restoreHot(root);
+}
+
 export function initAll(root: ParentNode): void {
   for (const mod of modules) mod.init(root);
 }

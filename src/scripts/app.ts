@@ -17,7 +17,7 @@ import { createSnr, resolveSnr } from './snr';
 import { createGround } from './ground';
 import { createResonance, setCavityAct } from './resonance';
 import { createTunnel } from './tunnel';
-import { initAll } from './anims';
+import { initAll, restoreAuthored } from './anims';
 import { fontsReady, setContext, runCleanups, unclaimAll, onCleanup } from './anims/util';
 import { prefersReducedMotion } from '../lib/motion-policy';
 import { bus } from '../lib/bus';
@@ -44,6 +44,11 @@ function build(): void {
   if (prefersReducedMotion()) {
     // Nothing was ever hidden, because nothing was ever built. The document
     // stands as authored, and the instrument reads fully resolved.
+    //
+    // "As authored" needs help in exactly one case: arriving here from a full
+    // build, teardown() has just reverted the context, and GSAP restores the
+    // plain text its plugins recorded — dropping markup that was in the source.
+    restoreAuthored(document.body);
     resolveSnr();
     bus.emit('page:load');
     return;

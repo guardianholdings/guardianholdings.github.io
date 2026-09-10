@@ -119,6 +119,11 @@ a { color: inherit; text-decoration: none; }
   margin: 0;
 }
 
+/* A glyph the decode never let cool. Global rather than scoped to the carrier:
+   scramble.ts recreates these elements after ScrambleText flattens the word,
+   and a script-made element carries none of Astro's scoping attributes. */
+.hot-glyph { color: var(--signal-hi); }
+
 .h-hero {
   font-family: var(--font-display);
   font-weight: 900;

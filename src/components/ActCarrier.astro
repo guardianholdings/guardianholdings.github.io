@@ -10,14 +10,32 @@ import { HERO, COMPANY } from '../data/content';
 
 const ADVANCE = 0.72;
 const fit = (w: string) => (w.length * ADVANCE).toFixed(2);
+
+/**
+ * Letters the decode never lets cool.
+ *
+ * GUARDIAN HOLDINGS contains exactly two Gs, one in each word, and leaving
+ * them in the signal colour reads as a monogram surfacing out of the static
+ * rather than as a highlight applied to the type.
+ *
+ * They are AUTHORED here, not painted on by script, because under reduced
+ * motion app.ts never builds the motion runtime at all — the document stands
+ * as written — and a mark that only exists inside an animation would simply
+ * not be there. scramble.ts is told about them through data-scramble-hot so
+ * it can put them back after ScrambleText flattens the element to plain text;
+ * that is a restore, not the source of truth.
+ */
+const HOT = 'G';
+const glyphs = (word: string) =>
+  [...word].map((ch) => ({ ch, hot: HOT.includes(ch.toUpperCase()) }));
 ---
 <section class="carrier" id="carrier" data-act="0" aria-labelledby="carrier-title">
   <div class="carrier__stage" data-tunnel>
     <p class="readout carrier__standfirst" data-anim="scramble">{HERO.standfirst}</p>
 
     <h1 class="carrier__title" id="carrier-title">
-      <span class="h-hero carrier__word carrier__word--a" data-anim="scramble" style={`--word-fit:${fit(HERO.words[0])}`}>{HERO.words[0]}</span>
-      <span class="h-hero carrier__word carrier__word--b" data-anim="scramble" style={`--word-fit:${fit(HERO.words[1])}`}>{HERO.words[1]}</span>
+      <span class="h-hero carrier__word carrier__word--a" data-anim="scramble" data-scramble-hot={HOT} style={`--word-fit:${fit(HERO.words[0])}`}>{glyphs(HERO.words[0]).map(({ ch, hot }) => (hot ? <span class="hot-glyph">{ch}</span> : ch))}</span>
+      <span class="h-hero carrier__word carrier__word--b" data-anim="scramble" data-scramble-hot={HOT} style={`--word-fit:${fit(HERO.words[1])}`}>{glyphs(HERO.words[1]).map(({ ch, hot }) => (hot ? <span class="hot-glyph">{ch}</span> : ch))}</span>
     </h1>
 
     <p class="carrier__eyebrow readout" data-anim="scramble">{HERO.eyebrow}</p>
