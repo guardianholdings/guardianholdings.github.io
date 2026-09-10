@@ -21,6 +21,10 @@
 name = "guardian-holdings"
 compatibility_date = "2026-09-01"
 
+# Only reached for the paths named in [assets] run_worker_first below. See the
+# header of worker-entry.ts for why a static site needs any Worker code at all.
+main = "worker-entry.ts"
+
 # Keep the workers.dev URL alive as staging. Declaring any [[routes]] turns it
 # off by default, and losing it would mean the only way to check a build is on
 # the live domain.
@@ -28,6 +32,13 @@ workers_dev = true
 
 [assets]
 directory = "./dist"
+binding = "ASSETS"
+# The ONE path the Worker runs for. Cloudflare's asset store answers Range with
+# 200 and the whole file, and iOS Safari's media element requires real byte
+# ranges — so /audio/* is proxied through worker-entry.ts, which adds them.
+# Everything else on the site bypasses the Worker entirely and stays free and
+# unmetered, which is the whole reason this host was chosen.
+run_worker_first = ["/audio/*"]
 # Astro emits privacy-policy/index.html. This is the default, and it 307s
 # /privacy-policy to /privacy-policy/ rather than serving it in place —
 # measured, not assumed. No visitor meets that hop: the site's own link, the
