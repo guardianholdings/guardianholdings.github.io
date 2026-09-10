@@ -16,7 +16,7 @@ import { createSmoothScroll, type SmoothScroll } from './smooth-scroll';
 import { createSnr, resolveSnr } from './snr';
 import { createGround } from './ground';
 import { createResonance, setCavityAct } from './resonance';
-import { createTunnel } from './tunnel';
+import { createTunnel, scrollToReveal } from './tunnel';
 import { initAll, restoreAuthored } from './anims';
 import { fontsReady, setContext, runCleanups, unclaimAll, onCleanup } from './anims/util';
 import { prefersReducedMotion } from '../lib/motion-policy';
@@ -74,10 +74,50 @@ function build(): void {
     // visible mode rate and the audible pitch together, because they are the
     // same number.
     onCleanup(bus.on('act', setCavityAct));
+
+    onCleanup(followFocus());
   }, root);
 
   setContext(context);
   scheduleRefreshes();
+}
+
+/**
+ * Fly the camera to whatever the keyboard just focused.
+ *
+ * With `main` fixed there is nothing for the browser to scroll, so tabbing into
+ * an act the camera has passed puts focus on an invisible control — the visitor
+ * presses Tab, nothing appears to happen, and they type into a field they
+ * cannot see.
+ *
+ * Guarded three ways. `:focus-visible` keeps a mouse click from yanking the
+ * camera, since a click already happened where the visitor was looking. The
+ * on-screen test means a control that is already readable is left alone. And
+ * `scrollToReveal` returns null outside tunnel mode, where the browser's own
+ * behaviour is correct and should not be second-guessed.
+ */
+function followFocus(): () => void {
+  const onFocusIn = (event: FocusEvent) => {
+    const el = event.target as HTMLElement | null;
+    if (!el || typeof el.getBoundingClientRect !== 'function') return;
+    if (!el.matches(':focus-visible')) return;
+
+    const rect = el.getBoundingClientRect();
+    // The HUD scrims cover 76px at each end, so "on screen" has to mean clear
+    // of them, not merely inside the viewport.
+    const BAND = 76;
+    if (rect.top >= BAND && rect.bottom <= window.innerHeight - BAND) return;
+
+    const y = scrollToReveal(el);
+    if (y === null) return;
+
+    const lenis = smooth?.lenis;
+    if (lenis) lenis.scrollTo(y, { lock: true });
+    else window.scrollTo({ top: y, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  };
+
+  document.addEventListener('focusin', onFocusIn);
+  return () => document.removeEventListener('focusin', onFocusIn);
 }
 
 /**

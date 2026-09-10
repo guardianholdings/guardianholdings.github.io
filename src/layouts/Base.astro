@@ -78,12 +78,17 @@ const jsonLd = {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    {/* No og:image. The previous card belonged to the old radar design and was
-        removed; a summary_large_image card whose image 404s collapses in the
-        validator and the failure gets cached by Slack and LinkedIn, which is
-        worse than never declaring one. "summary" is the honest card for a site
-        with no image. Restore both tags together if an image is made. */}
-    <meta name="twitter:card" content="summary" />
+    {/* The card and its image are declared together, which is the rule the
+        previous comment here set: a summary_large_image whose image 404s
+        collapses in the validator and Slack and LinkedIn cache the failure.
+        /og.png is committed to public/, so it ships with the build or not at
+        all — there is no path where the tag outlives the file. */}
+    <meta property="og:image" content={new URL('/og.png', Astro.site).href} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="Guardian Holdings JSC" />
+    <meta name="twitter:card" content="summary_large_image" />
 
     {/* The display face sets the hero, which is the LCP element. Without a
         preload the first paint measures in the fallback and the headline
@@ -95,6 +100,10 @@ const jsonLd = {
   </head>
 
   <body data-instrument={instrument ? '' : undefined}>
+    {/* Set before first paint, so the no-JS rules in global.css never flash.
+        Everything that needs a running script to mean anything — the HUD's
+        clocks, the sound control, the live SNR — keys off this. */}
+    <script is:inline>document.documentElement.dataset.js = '';</script>
     <a class="skip-link mono gh-reground" href="#main">Skip to content</a>
 
     {/* A direct child of body at z-index 0, behind <main>. The dust is the only
@@ -120,7 +129,7 @@ const jsonLd = {
         `perspective`, and .camera is the 3D rendering context the act planes
         are sorted in. Both are inert in the base stylesheet, so with no JS —
         or under reduced motion — this is an ordinary document that scrolls. */}
-    <main id="main">
+    <main id="main" tabindex="-1">
       <div class="camera">
         <slot />
       </div>

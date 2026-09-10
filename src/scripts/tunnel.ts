@@ -174,6 +174,33 @@ export function actRevealMarker(el: Element): Element | null {
   return planes.find((p) => p.el === section)?.mark ?? null;
 }
 
+/**
+ * The scroll position that brings `el` into the frame.
+ *
+ * Needed because in tunnel mode `main` is fixed: there is no scrollable box
+ * around the acts, so the browser's own "scroll the focused element into view"
+ * has nothing to act on. Tab into an act the camera has already flown past and
+ * focus lands on a control that is genuinely off screen, with no way for the
+ * platform to correct it.
+ *
+ * The act pans across its own dwell, so the answer is not simply the act's
+ * arrival mark: it is how far through that pan the element sits. Both rects
+ * carry the same 3D transform, so their ratio is free of it.
+ */
+export function scrollToReveal(el: Element): number | null {
+  const section = el.closest<HTMLElement>('[data-act]');
+  if (!section) return null;
+  const plane = planes.find((p) => p.el === section);
+  if (!plane || plane.dwellLength <= 0) return null;
+
+  const box = section.getBoundingClientRect();
+  if (box.height <= 0) return plane.dwellStart;
+
+  const rect = el.getBoundingClientRect();
+  const through = clamp01((rect.top + rect.height / 2 - box.top) / box.height);
+  return plane.dwellStart + through * plane.dwellLength;
+}
+
 /* ── schedule ─────────────────────────────────────────────────────────────── */
 
 function measure(): void {

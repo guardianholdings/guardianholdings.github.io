@@ -5,6 +5,9 @@
 @import './cursor.css';
 @import './sound.css';
 
+@property --fade-start { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --fade-end { syntax: '<length>'; inherits: false; initial-value: 0px; }
+
 /* ── Reset ─────────────────────────────────────────────────────────────── */
 *,
 *::before,
@@ -22,7 +25,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.6;
   overflow-x: clip;
   -webkit-font-smoothing: antialiased;
@@ -105,7 +108,16 @@ html[data-tunnel='on'] .shaft-spacer { display: block; position: relative; width
 a { color: inherit; text-decoration: none; }
 ::selection { background: var(--signal); color: var(--ink); }
 
-/* ── Type scale ────────────────────────────────────────────────────────── */
+/* ── Type scale ──────────────────────────────────────────────────────────
+   Everything a person actually READS is in rem, so a larger browser default
+   font size does what the reader asked. That is the whole accommodation: the
+   smallest type here is 0.625rem mono, and there is no large-text contrast
+   exemption to lean on at that size.
+
+   The display clamps below stay in px on purpose. They are already fluid on
+   the viewport, they are capped by width-derived min() terms in the openers,
+   and doubling a 200px floor buys a reader nothing while overflowing every
+   act it appears in. Small text scales; display type is already display. */
 
 /* The single biggest gesture on the site: one word, filling the measure. */
 .display-word {
@@ -156,7 +168,7 @@ a { color: inherit; text-decoration: none; }
 
 .lede {
   font-family: var(--font-mono);
-  font-size: clamp(15px, 1.2vw, 18px);
+  font-size: clamp(0.9375rem, 1.2vw, 1.125rem);
   line-height: 1.55;
   color: var(--ink-muted);
   max-width: var(--measure);
@@ -164,7 +176,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .body {
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.65;
   color: var(--ink-muted);
   max-width: var(--measure);
@@ -173,7 +185,7 @@ a { color: inherit; text-decoration: none; }
 
 .mono {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 400;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -182,7 +194,7 @@ a { color: inherit; text-decoration: none; }
 
 .readout {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
@@ -192,7 +204,7 @@ a { color: inherit; text-decoration: none; }
 /* Justified uppercase mono block — the "dossier paragraph" from the references. */
 .mono-para {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 0.75rem;
   letter-spacing: 0.06em;
   line-height: 1.7;
   text-transform: uppercase;
@@ -214,7 +226,7 @@ a { color: inherit; text-decoration: none; }
 /* Mono label preceded by a short signal rule. */
 .eyebrow {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-muted);
@@ -271,6 +283,35 @@ a { color: inherit; text-decoration: none; }
 :where(a, button, input, textarea, [tabindex]):focus-visible {
   outline: 1px solid var(--signal-hi);
   outline-offset: 3px;
+}
+
+/* ── Sideways-scrolling panels ─────────────────────────────────────────────
+   The attributes come from scripts/scrollers.ts, which only sets them when the
+   track genuinely overflows. Everything here keys off [data-scrollable], so a
+   panel that fits carries no focus ring and no fade. */
+.gh-scroller[data-scrollable] {
+  --fade-start: 0px;
+  --fade-end: 0px;
+  /* Tells a mouse user what the tabindex tells a keyboard user: the content
+     continues. Masking rather than an overlaid gradient, because the panel
+     inverts to bone in act 02 and a hard-coded gradient would be the one dark
+     smear on a lit ground. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent 100%);
+  transition: --fade-start var(--dur-fast) linear, --fade-end var(--dur-fast) linear;
+}
+.gh-scroller[data-edge~='start'] { --fade-start: 32px; }
+.gh-scroller[data-edge~='end'] { --fade-end: 32px; }
+
+/* The panel is the focus target, so the ring has to clear its own edge — an
+   inset outline would be masked away by the fade above. */
+.gh-scroller[data-scrollable]:focus-visible {
+  outline: 2px solid var(--signal-hi);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gh-scroller[data-scrollable] { transition: none; }
 }
 
 /* ── Grain ─────────────────────────────────────────────────────────────── */
@@ -354,6 +395,33 @@ a { color: inherit; text-decoration: none; }
 
 html[data-motion='reduced'] .grain { opacity: 0.05; }
 
+/* ── No scripting ──────────────────────────────────────────────────────────
+   <html data-js> is set by an inline script in Base.astro before first paint,
+   so none of this flashes on a normal visit.
+
+   Without it the document still reads correctly — that was already true — but
+   three things were left claiming to be live when nothing was driving them:
+   the HUD froze on SOF --:--:-- and 00dB SNR, the sound control rendered as a
+   button that could not do anything, and --snr never resolved, which pinned
+   the grain at 0.35 and the scanlines at 0.22 over every line of copy. The
+   noise floor is the hero's by design; it is not meant to be the whole site's
+   permanent condition. */
+html:not([data-js]) {
+  --snr: 1;
+}
+html:not([data-js]) .hud,
+html:not([data-js]) .sound,
+html:not([data-js]) .channel__clock {
+  display: none;
+}
+
+/* Focused by the skip link, never by Tab. The ring is suppressed because in
+   tunnel mode main is the fixed full-viewport camera housing, so an outline on
+   it is a box drawn around the entire screen. */
+main[tabindex='-1']:focus {
+  outline: none;
+}
+
 /* ── The site's only button ────────────────────────────────────────────── */
 .door {
   display: inline-flex;
@@ -364,7 +432,7 @@ html[data-motion='reduced'] .grain { opacity: 0.05; }
   background: transparent;
   color: var(--ink);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.6875rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;

@@ -26,3 +26,16 @@ import ActChannel from '../components/ActChannel.astro';
   <ActWatch />
   <ActChannel />
 </Base>
+
+{/* The three panels that hold a track wider than the frame below 768px.
+    initScroller only makes one focusable when it genuinely overflows, so
+    above the breakpoint — where all three are overflow:hidden — this adds
+    no tab stops. Labels name what the panel holds, not that it scrolls;
+    the module appends the scrolling part. */}
+<script>
+  import { initScroller } from '../scripts/scrollers';
+
+  initScroller('.matrix__scroll', 'Investment universe matrix');
+  initScroller('.process__viewport', 'Process, four steps');
+  initScroller('.provide__viewport', 'Operating functions');
+</script>

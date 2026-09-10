@@ -119,12 +119,12 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
       <div class="channel__legal">
         <p class="readout">© {new Date().getFullYear()} {COMPANY.name}</p>
         <p class="readout channel__legalline">{CHANNEL.legal}</p>
-        <a class="readout channel__privacy" href="/privacy-policy">Privacy policy</a>
+        <a class="readout channel__privacy" href="/privacy-policy/">Privacy policy</a>
         {hasBed && (
           <p class="readout channel__credit">
             {CHANNEL.soundCredit.text}{' '}
             <a href={CHANNEL.soundCredit.href} rel="license noopener noreferrer" target="_blank">
-              {CHANNEL.soundCredit.licence}
+              {CHANNEL.soundCredit.licence}<span class="sr-only"> (opens in a new tab)</span>
             </a>
           </p>
         )}
@@ -175,7 +175,7 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
     border-bottom: 1px solid var(--hairline-strong);
     color: var(--ink);
     font-family: var(--font-mono);
-    font-size: 14px;
+    font-size: 0.875rem;
     padding: 12px 0;
     transition: border-color var(--dur-fast);
   }
@@ -195,20 +195,20 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
   .channel__block { display: flex; flex-direction: column; gap: 12px; }
   .channel__mail {
     font-family: var(--font-display); font-weight: 500;
-    font-size: clamp(18px, 1.7vw, 24px); letter-spacing: -0.02em;
+    font-size: clamp(1.125rem, 1.7vw, 1.5rem); letter-spacing: -0.02em;
     border-bottom: 1px solid var(--hairline-strong);
     align-self: flex-start; padding-bottom: 4px;
     transition: color var(--dur-fast), border-color var(--dur-fast);
   }
   .channel__mail:hover { color: var(--signal-hi); border-color: var(--signal); }
-  .channel__address { font-style: normal; font-size: 14px; line-height: 1.7; color: var(--ink-muted); }
+  .channel__address { font-style: normal; font-size: 0.875rem; line-height: 1.7; color: var(--ink-muted); }
   .channel__clock span { color: var(--signal-hi); }
 
   .channel__footer { border-top: 0; }
   .channel__ask { margin-block: clamp(40px, 5vw, 72px) clamp(20px, 2.5vw, 32px); max-width: 16ch; }
   .channel__footpara { margin-bottom: clamp(28px, 3.5vw, 44px); }
   .channel__brand {
-    font-size: 14px; line-height: 1.7; color: var(--ink-muted);
+    font-size: 0.875rem; line-height: 1.7; color: var(--ink-muted);
     max-width: 62ch; margin: 0 0 clamp(48px, 6vw, 80px);
   }
 
@@ -218,7 +218,13 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
     border-top: 1px solid var(--hairline); padding-top: 24px;
   }
   .channel__legalline { max-width: 60ch; line-height: 1.6; letter-spacing: 0.08em; }
-  .channel__privacy { border-bottom: 1px solid var(--hairline-strong); }
+  /* Both footer links sat at 19px and 15px tall. inline-block lets the padding
+     count toward the 24px target minimum without moving the baseline. */
+  .channel__privacy {
+    display: inline-block;
+    padding-block: 4px;
+    border-bottom: 1px solid var(--hairline-strong);
+  }
   .channel__privacy:hover { color: var(--signal-hi); }
 
   /* Its own line under the legal row rather than a fourth column in it.
@@ -232,6 +238,8 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
     max-width: 70ch;
   }
   .channel__credit a {
+    display: inline-block;
+    padding-block: 5px;
     color: inherit;
     border-bottom: 1px solid var(--hairline-strong);
   }
@@ -239,6 +247,14 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
   @media (max-width: 900px) {
     .channel__grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 767px) {
+    /* One column here, so the address runs the full width and its tail reached
+       under the fixed sound control in the corner. It is a 31-character token
+       that cannot wrap anywhere sensible, so the fix is to set it smaller
+       rather than to let it break mid-domain. */
+    .channel__mail { font-size: 1rem; }
   }
 </style>
 

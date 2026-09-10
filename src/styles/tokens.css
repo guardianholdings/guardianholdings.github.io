@@ -1,8 +1,23 @@
 /* ── SIGNAL tokens ────────────────────────────────────────────────────────
    Warm near-black ground, bone ink, one hot accent in two steps of the same
    hue: --signal for graphic marks and fills, --signal-hi wherever the colour
-   has to carry text (it clears 5.3:1 on the ground; --signal alone is 2.7:1
+   has to carry text (it clears 5.3:1 on the ground; --signal alone is 2.97:1
    and must never be used for type).
+
+   EVERY INK TOKEN CLEARS 4.5:1 ON THE GROUND IT IS DEFINED FOR. The type here
+   is 10-11px mono at its smallest, so there is no large-text exemption to
+   lean on anywhere on this site. Measured:
+
+     token           on #0A0907    role
+     --ink              16.30      headlines, statements
+     --ink-muted         6.48      body copy, ledes, HUD rows
+     --ink-dim           4.66      readouts, labels, counters
+
+   --ink-dim was #55504a (2.50:1) and carried 82 elements, including the form
+   labels, the compliance line, the privacy link and the licence credit. Both
+   it and --ink-muted were raised together: lifting only the dim step would
+   have closed the gap to muted to 0.66 and collapsed the three-step
+   recession the whole layout depends on.
    ------------------------------------------------------------------------ */
 
 /* Registering --snr lets the engine store it as a number rather than a token
@@ -18,8 +33,8 @@
   --bg: #0a0907;
   --bg-raised: #121010;
   --ink: #ede8de;
-  --ink-muted: #8a837a;
-  --ink-dim: #55504a;
+  --ink-muted: #9a9287;
+  --ink-dim: #82796f;
 
   /* The accent */
   --signal: #b32017;
@@ -58,11 +73,16 @@
    contrast order genuinely reverses. Measured against each ground:
 
      token         on #0A0907   on #F4F1EA
-     --ink            16.30        1.00     <- unusable, must flip
-     --ink-muted       5.32        3.07     <- demoted to recessive
-     --ink-dim         2.50        6.53     <- promoted to primary body
-     --signal          2.97        5.48     <- becomes text-safe
-     --signal-hi       5.36        3.04     <- FAILS as text, must darken
+     --ink            16.30        1.08     <- unusable, must flip
+     --ink-muted       6.48        2.75     <- demoted to recessive
+     --ink-dim         4.66        5.35     <- promoted, but see below
+     --signal          2.97        5.94     <- becomes text-safe
+     --signal-hi       5.36        3.29     <- FAILS as text, must darken
+
+   The bone pack does not simply reuse the dark tokens in a new order: the
+   dark --ink-dim lands at 5.35 on bone, which passes, but leaves no room
+   between it and --bone-ink-muted. So bone gets its own dim step at
+   #6F6960 (4.82:1), keeping the same three-step spacing as the dark pack.
 
    So the dark ground's rule ("--signal-hi carries text, --signal never does")
    inverts exactly, and the bone pack swaps which of the two is the text colour.
@@ -101,7 +121,7 @@
   --bone-raised: #eae6dd;
   --bone-ink: #14130f;
   --bone-ink-muted: #55504a;
-  --bone-ink-dim: #8a837a;
+  --bone-ink-dim: #6f6960;
   --bone-signal: #b32017;
   --bone-signal-hi: #94170f;
   --bone-hairline: rgba(20, 19, 15, 0.16);
@@ -146,8 +166,8 @@
 .hud::after {
   --bg: color-mix(in srgb, #0a0907, var(--bone) calc(var(--gg) * 100%));
   --ink: color-mix(in srgb, #ede8de, var(--bone-ink) calc(var(--gg) * 100%));
-  --ink-muted: color-mix(in srgb, #8a837a, var(--bone-ink-muted) calc(var(--gg) * 100%));
-  --ink-dim: color-mix(in srgb, #55504a, var(--bone-ink-dim) calc(var(--gg) * 100%));
+  --ink-muted: color-mix(in srgb, #9a9287, var(--bone-ink-muted) calc(var(--gg) * 100%));
+  --ink-dim: color-mix(in srgb, #82796f, var(--bone-ink-dim) calc(var(--gg) * 100%));
   --signal: color-mix(in srgb, #b32017, var(--bone-signal) calc(var(--gg) * 100%));
   --signal-hi: color-mix(in srgb, #e8503f, var(--bone-signal-hi) calc(var(--gg) * 100%));
   --hairline: color-mix(in srgb, rgba(237, 232, 222, 0.14), var(--bone-hairline) calc(var(--gg) * 100%));
