@@ -36,9 +36,18 @@ workers_dev = true
 #   pnpm dlx wrangler secret put TURNSTILE_SECRET   # optional; unset skips the bot check
 [vars]
 CONTACT_TO = "petkoff@guardianholdingsjsc.com"
-# MUST be a domain verified in Resend. The `send.` subdomain is deliberate: it
-# leaves the root MX that delivers company mail to iCloud completely alone.
-CONTACT_FROM = "Guardian Holdings JSC <form@send.guardianholdingsjsc.com>"
+# MUST be a domain verified in Resend, or every send is a 403. The apex is what
+# is verified on this account (confirmed 2026-09-10: sending from
+# send.guardianholdingsjsc.com returned "This API key is not authorized to send
+# emails from send.guardianholdingsjsc.com").
+#
+# Verifying the APEX rather than a `send.` subdomain is the riskier of the two
+# arrangements, and the risk is one-way: company mail is delivered by the apex
+# MX records, which point at iCloud. Checked after verification and unchanged —
+# mx01/mx02.mail.icloud.com, SPF still `v=spf1 include:icloud.com ~all`. If
+# Resend ever asks for an MX record on the APEX, do not add it; that is the one
+# record that would take the company inbox down.
+CONTACT_FROM = "Guardian Holdings JSC <form@guardianholdingsjsc.com>"
 
 # The acknowledgement mail means a stranger can make this domain send a message
 # to any address they type, so the endpoint is rate limited per IP as well as
