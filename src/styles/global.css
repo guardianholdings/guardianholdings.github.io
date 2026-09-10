@@ -64,6 +64,20 @@ html[data-tunnel='on'] .camera {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
+  /* THE CAMERA MUST NOT TAKE CLICKS.
+     It is a full-viewport box sitting at z = 0, and the acts it contains are
+     pushed to NEGATIVE z for most of their dwell — the act at the station
+     measured translate3d(0, -399px, -96.2px). In a preserve-3d context the
+     browser hit-tests the projected geometry, so a plane behind z = 0 is
+     behind this box, and this box was swallowing every pointer event aimed at
+     it. The act looked perfectly interactive and was not: clicking a field
+     left document.activeElement on <main>, and the submit button fired
+     nothing. Every form field, every link and every button inside the shaft
+     was dead at any depth where the act had not come forward of the camera.
+     tunnel.ts already grants `pointer-events: auto` to the act at the station
+     and takes it back from the rest, so the acts opt in for themselves and
+     this only stops the container intercepting them first. */
+  pointer-events: none;
 }
 
 html[data-tunnel='on'] .camera > [data-act] {
