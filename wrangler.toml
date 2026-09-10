@@ -28,8 +28,11 @@ workers_dev = true
 
 [assets]
 directory = "./dist"
-# Astro emits privacy-policy/index.html; "auto-trailing-slash" is the default
-# and resolves /privacy-policy to it without a redirect.
+# Astro emits privacy-policy/index.html. This is the default, and it 307s
+# /privacy-policy to /privacy-policy/ rather than serving it in place —
+# measured, not assumed. No visitor meets that hop: the site's own link, the
+# canonical and the sitemap all carry the trailing slash. It exists for
+# hand-typed and old inbound links.
 html_handling = "auto-trailing-slash"
 # src/pages/404.astro builds to dist/404.html at the root, which is where this
 # mode looks. An unknown path gets the site's own page, with a 404 status —
