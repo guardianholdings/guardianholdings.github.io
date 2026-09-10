@@ -36,10 +36,6 @@ export function initAll(root: ParentNode): void {
   for (const mod of modules) mod.init(root);
 }
 
-interface Scheduler {
-  postTask?: (cb: () => void, opts?: { priority?: string }) => Promise<unknown>;
-}
-
 /**
  * Build the reveals in chunks instead of in one synchronous block.
  *
@@ -106,10 +102,20 @@ export function initStaged(root: ParentNode, onDrained: () => void): () => void 
   };
   window.addEventListener('scroll', onScroll, { once: true, passive: true });
 
+  // IDLE, not 'user-blocking'. Chunking the build removed almost all of the
+  // blocking time (mobile TBT 110ms median -> 12ms) and then handed it back at
+  // the other end: running the chunks as soon as possible put them in the paint
+  // window, and Lantern charged them to first paint. Measured over five warm
+  // runs, median FCP went 1773 -> 2075ms and LCP 2572 -> 2946ms for a net loss.
+  // The far acts are not needed until someone scrolls, so they belong in idle
+  // time behind the first paint, with a timeout so a busy main thread cannot
+  // starve them indefinitely. The scroll listener below is what makes that safe.
   const post = (fn: () => void): void => {
-    const sched = (window as Window & { scheduler?: Scheduler }).scheduler;
-    if (sched?.postTask) void sched.postTask(fn, { priority: 'user-blocking' });
-    else window.setTimeout(fn, 0);
+    const idle = (window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number;
+    }).requestIdleCallback;
+    if (idle) idle(fn, { timeout: 1000 });
+    else window.setTimeout(fn, 200);
   };
 
   const pump = (): void => {
