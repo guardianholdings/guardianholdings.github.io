@@ -38,7 +38,14 @@
  * track the dominant mode with a Q of 17 and +13 dB of gain. It was true to the
  * physics — a resonator does colour its own noise — and it was a scream.
  *
- * Synthesised entirely in Web Audio — no audio files, nothing to download.
+ * ── Two beds, one control ───────────────────────────────────────────────────
+ * The toggle prefers a recording when one is present (see bed.ts) and plays
+ * the cavity above when it is not. They do not layer: the reason is in bed.ts
+ * and it is a key clash, not a preference. Everything below — the modal
+ * automation, the act-boundary strike — belongs to the synth path only, and is
+ * gated accordingly. The synth is still the default and still the fallback, so
+ * removing the audio file restores this file's original behaviour exactly.
+ *
  * Off by default and gated behind a real click, both because autoplay policy
  * requires a gesture and because a site that starts making noise on its own is
  * closed immediately.
@@ -48,6 +55,7 @@ import { bus } from '../../lib/bus';
 import { getSnr } from '../../scripts/snr';
 import { MODES, getResonance, pluck } from '../../scripts/resonance';
 import { motionAllowed } from '../../lib/motion-policy';
+import { load as loadBed, levels, BED_MASTER, type Bed } from './bed';
 
 const MASTER = 0.105;
 
@@ -235,9 +243,21 @@ function buildGraph(): Graph {
   };
 }
 
-export default function Sound() {
+export interface SoundProps {
+  /** Resolved at build time in Base.astro. Null means no recording shipped,
+   *  and the control plays the synthesised cavity instead. */
+  bedSrc?: string | null;
+}
+
+export default function Sound({ bedSrc = null }: SoundProps) {
   const [on, setOn] = useState(false);
+  /** True when the recording is what is playing. Gates every synth-only effect. */
+  const [music, setMusic] = useState(false);
   const graph = useRef<Graph | null>(null);
+  const bed = useRef<Bed | null>(null);
+  /** A second click while the recording is still opening would start a second
+      one. The first press owns the toggle until it has finished. */
+  const busy = useRef(false);
   const barsRef = useRef<HTMLSpanElement | null>(null);
 
   /* The session's choice used to be kept in sessionStorage — but the only
@@ -249,13 +269,15 @@ export default function Sound() {
   const teardown = useCallback(() => {
     graph.current?.stop();
     graph.current = null;
+    bed.current?.stop();
+    bed.current = null;
   }, []);
 
   useEffect(() => teardown, [teardown]);
 
-  /* ── parameter automation ─────────────────────────────────────────────── */
+  /* ── parameter automation (synth path only) ───────────────────────────── */
   useEffect(() => {
-    if (!on) return;
+    if (!on || music) return;
 
     let frame = 0;
     let last = 0;
@@ -329,9 +351,9 @@ export default function Sound() {
     };
   }, [on]);
 
-  /* ── act boundary ─────────────────────────────────────────────────────── */
+  /* ── act boundary (synth path only) ───────────────────────────────────── */
   useEffect(() => {
-    if (!on) return;
+    if (!on || music) return;
     return bus.on('act', () => {
       const g = graph.current;
       if (!g) return;
@@ -366,10 +388,46 @@ export default function Sound() {
     });
   }, [on]);
 
+  /* ── the four bars, music path ────────────────────────────────────────── */
+  useEffect(() => {
+    if (!on || !music) return;
+    const bars = barsRef.current ? Array.from(barsRef.current.querySelectorAll('i')) : [];
+    if (!bars.length) return;
+
+    const out = new Array<number>(bars.length).fill(0);
+    let frame = 0;
+    let last = 0;
+
+    const loop = (now: number) => {
+      frame = requestAnimationFrame(loop);
+      if (now - last < 1000 / UPDATE_HZ) return;
+      last = now;
+      const b = bed.current;
+      if (!b) return;
+      levels(b.analyser, out);
+      let max = 1e-4;
+      for (const v of out) max = Math.max(max, v);
+      for (let n = 0; n < bars.length; n += 1) {
+        bars[n].style.height = `${(2 + (out[n] / max) * 8).toFixed(1)}px`;
+      }
+    };
+
+    frame = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(frame);
+      bars.forEach((b) => { b.style.height = ''; });
+    };
+  }, [on, music]);
+
   /* ── pause when the tab is hidden ─────────────────────────────────────── */
   useEffect(() => {
     if (!on) return;
     const onVisibility = () => {
+      const b = bed.current;
+      if (b) {
+        b.master.gain.setTargetAtTime(document.hidden ? 0 : BED_MASTER, b.ctx.currentTime, 0.25);
+        return;
+      }
       const g = graph.current;
       if (!g) return;
       const t = g.ctx.currentTime;
@@ -379,29 +437,54 @@ export default function Sound() {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [on]);
 
-  const toggle = useCallback(() => {
-    if (on) {
-      const g = graph.current;
-      if (g) {
-        // Fade out before tearing down, or the cut is a click. Long enough for
-        // the room to fall away with it rather than being sliced off.
-        g.master.gain.setTargetAtTime(0, g.ctx.currentTime, 0.3);
-        window.setTimeout(teardown, 1200);
+  const toggle = useCallback(async () => {
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      if (on) {
+        const b = bed.current;
+        if (b) {
+          // The bed fades and releases itself; it owns its own timing.
+          b.stop();
+          bed.current = null;
+        }
+        const g = graph.current;
+        if (g) {
+          // Fade out before tearing down, or the cut is a click. Long enough
+          // for the room to fall away with it rather than being sliced off.
+          g.master.gain.setTargetAtTime(0, g.ctx.currentTime, 0.3);
+          window.setTimeout(teardown, 1200);
+        }
+        setOn(false);
+        setMusic(false);
+        bus.emit('sound:toggle', false);
+        return;
       }
-      setOn(false);
-      bus.emit('sound:toggle', false);
-      return;
-    }
 
-    graph.current = buildGraph();
-    const g = graph.current;
-    void g.ctx.resume();
-    g.master.gain.setTargetAtTime(MASTER, g.ctx.currentTime, 0.9);
-    // Open on a struck cavity rather than on silence.
-    pluck(1.6);
-    setOn(true);
-    bus.emit('sound:toggle', true);
-  }, [on, teardown]);
+      // Prefer the recording. A missing or unplayable file resolves to null,
+      // and the cavity below is the fallback — so the control always sounds.
+      const next = await loadBed(bedSrc);
+      if (next) {
+        bed.current = next;
+        setMusic(true);
+        setOn(true);
+        bus.emit('sound:toggle', true);
+        return;
+      }
+
+      graph.current = buildGraph();
+      const g = graph.current;
+      void g.ctx.resume();
+      g.master.gain.setTargetAtTime(MASTER, g.ctx.currentTime, 0.9);
+      // Open on a struck cavity rather than on silence.
+      pluck(1.6);
+      setMusic(false);
+      setOn(true);
+      bus.emit('sound:toggle', true);
+    } finally {
+      busy.current = false;
+    }
+  }, [on, teardown, bedSrc]);
 
   // Reduced motion is also a reduced-stimulus preference; do not offer it.
   if (typeof window !== 'undefined' && !motionAllowed()) return null;
@@ -410,7 +493,7 @@ export default function Sound() {
     <button
       type="button"
       className="sound gh-reground"
-      onClick={toggle}
+      onClick={() => void toggle()}
       aria-pressed={on}
       data-cursor-label={on ? 'Mute' : 'Listen'}
     >

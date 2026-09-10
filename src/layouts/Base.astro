@@ -9,6 +9,8 @@ import RegMarks from '../components/RegMarks.astro';
 import Field from '../components/Field.astro';
 import Sound from '../islands/sound/Sound';
 import Cursor from '../islands/cursor/Cursor';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 interface Props {
   title?: string;
@@ -24,6 +26,22 @@ const {
 } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
+
+/* Which background recording shipped, answered at BUILD time.
+   Extensions are tried in order so the file can be dropped into public/audio/
+   as whatever the source provided, with no re-encoding; .ogg is last because
+   Safari cannot play it. Resolving here rather than probing from the browser
+   keeps a deliberate miss out of every visitor's console — see bed.ts.
+   Null is the normal state: the sound control then plays the synthesised
+   cavity, exactly as it did before any of this existed. */
+/* process.cwd(), not import.meta.url: this frontmatter is compiled into
+   Astro's cache before it runs, so a path relative to the module resolves
+   somewhere that is not src/layouts. Astro is always invoked at the project
+   root, which is what cwd is here. */
+const bedFile = ['lacrimosa.mp3', 'lacrimosa.m4a', 'lacrimosa.ogg'].find((name) =>
+  existsSync(join(process.cwd(), 'public', 'audio', name)),
+);
+const bedSrc = bedFile ? `/audio/${bedFile}` : null;
 
 /* Organization — never FinancialService, FinancialProduct, serviceType,
    makesOffer or areaServed. Those types describe an authorised entity offering
@@ -126,7 +144,7 @@ const jsonLd = {
     {instrument && <div class="shaft-spacer" aria-hidden="true"></div>}
 
     {instrument && <Cursor client:only="react" />}
-    {instrument && <Sound client:idle />}
+    {instrument && <Sound client:idle bedSrc={bedSrc} />}
 
     {instrument && <script src="../scripts/app.ts"></script>}
   </body>
