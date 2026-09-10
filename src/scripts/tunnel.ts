@@ -155,6 +155,26 @@ interface Plane {
 let planes: Plane[] = [];
 let spacer: HTMLElement | null = null;
 let total = 0;
+/**
+ * The viewport height the CURRENT SCHEDULE was built from.
+ *
+ * Every consumer of "how tall is the viewport" in this module reads this, and
+ * not the live viewport, and the difference is the whole iPhone bug. measure()
+ * bakes flight lengths, dwell lengths, marker positions and the spacer height
+ * out of one height; cameraAt() and the frame loop used to re-read the live
+ * height every frame. On a desktop those are the same number forever, so the
+ * two can never disagree. On iOS the URL bar changes the live height
+ * continuously *during the scroll that drives the tunnel* — and because
+ * ScrollTrigger is deliberately configured with ignoreMobileResize (see
+ * scripts/gsap.ts), the schedule is NOT rebuilt when it does. So the schedule
+ * stayed frozen at the height it was born with while the camera arithmetic
+ * floated with the toolbar, and the two drifted apart by up to the toolbar's
+ * height: flight segments started at scroll offsets the dwells were never
+ * computed for, and every act's vertical placement jumped with the bar.
+ * Freezing the number here is what makes ignoreMobileResize correct rather
+ * than corrupting.
+ */
+let viewH = 0;
 let currentAct = -1;
 let active = false;
 
@@ -205,7 +225,10 @@ export function scrollToReveal(el: Element): number | null {
 
 function measure(): void {
   if (!planes.length) return;
-  const vh = window.innerHeight;
+  // The ONLY live-viewport read in this module. Everything downstream uses
+  // viewH, so nothing can disagree with what was measured here.
+  viewH = window.innerHeight;
+  const vh = viewH;
   const flight = vh * FLIGHT_VH;
 
   const view = readableHeight(vh);
@@ -264,7 +287,10 @@ function measure(): void {
 
 /** Camera depth for a scroll position, plus each act's pan progress. */
 function cameraAt(scroll: number): number {
-  const vh = window.innerHeight;
+  // viewH, not the live height: this must agree with the schedule measure()
+  // built, or the flight segments are sized against a viewport the dwell
+  // offsets were never computed for.
+  const vh = viewH;
   const flight = vh * FLIGHT_VH;
 
   for (let i = 0; i < planes.length; i += 1) {
@@ -356,7 +382,7 @@ export function createTunnel(root: ParentNode): void {
   const step = (_t: number, delta: number): void => {
     addIdle(delta / 1000);
 
-    const vh = window.innerHeight;
+    const vh = viewH;
     const view = readableHeight(vh);
     const scroll = window.scrollY;
     const camera = cameraAt(scroll);
