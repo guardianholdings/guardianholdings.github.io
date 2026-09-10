@@ -17,7 +17,7 @@ import { createSnr, resolveSnr } from './snr';
 import { createGround } from './ground';
 import { createResonance, setCavityAct } from './resonance';
 import { createTunnel, scrollToReveal } from './tunnel';
-import { initAll, restoreAuthored } from './anims';
+import { initStaged, restoreAuthored } from './anims';
 import { fontsReady, setContext, runCleanups, unclaimAll, onCleanup } from './anims/util';
 import { prefersReducedMotion } from '../lib/motion-policy';
 import { bus } from '../lib/bus';
@@ -68,7 +68,10 @@ function build(): void {
     // position from, so initAll must come after it.
     createTunnel(root);
     createGround(root);
-    initAll(root);
+    // Staged, not one block: the act on screen is built synchronously and the
+    // rest are queued one act per task. See initStaged for why the split is
+    // decided by each plane's inline visibility and not by an act count.
+    onCleanup(initStaged(root, () => ScrollTrigger.refresh()));
 
     // Each act is a different cavity length. Shortening the string raises the
     // visible mode rate and the audible pitch together, because they are the
@@ -145,18 +148,16 @@ function scheduleRefreshes(): void {
   const offReady = bus.on('field:ready', () => ScrollTrigger.refresh());
   onCleanup(offReady);
 
-  // 4. Anything else that changes document height — a late web font on an act
-  //    far down the page, a filter re-plotting the portfolio grid.
-  let debounce = 0;
-  const observer = new ResizeObserver(() => {
-    window.clearTimeout(debounce);
-    debounce = window.setTimeout(() => ScrollTrigger.refresh(), 180);
-  });
-  observer.observe(document.body);
-  onCleanup(() => {
-    observer.disconnect();
-    window.clearTimeout(debounce);
-  });
+  // There used to be a fourth signal here: a ResizeObserver on document.body,
+  // meant to catch a late web font or a re-plotted portfolio grid changing the
+  // document height. It could not do that job. With `main` position:fixed the
+  // only in-flow child of body is .shaft-spacer — every other child is fixed or
+  // zero-height — so body's height IS the spacer's height, and tunnel.ts writes
+  // that itself from measure(), which only runs from a refresh. It observed its
+  // own output: a strict echo of the three signals above, measured at 25191px
+  // on both sides. Do not reinstate it on the ten acts either; that fires on
+  // every SplitText re-split, every Flip re-plot and every vh-driven padding
+  // change, which is strictly MORE refreshes than today, arriving mid-tween.
 }
 
 /**
