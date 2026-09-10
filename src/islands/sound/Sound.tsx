@@ -126,9 +126,10 @@ function impulseResponse(ctx: AudioContext): AudioBuffer {
   return buffer;
 }
 
-function buildGraph(): Graph {
-  const ctx = new AudioContext();
-
+/** Builds the cavity on a context the CALLER created inside the click — see
+ *  the gesture note in bed.ts. This used to construct its own, which on iOS
+ *  meant a context born outside the gesture that could never leave 'suspended'. */
+function buildGraph(ctx: AudioContext): Graph {
   const master = ctx.createGain();
   master.gain.value = 0;
 
@@ -238,7 +239,6 @@ function buildGraph(): Graph {
       } catch {
         /* already stopped */
       }
-      void ctx.close();
     },
   };
 }
@@ -258,6 +258,15 @@ export default function Sound({ bedSources = NO_BED }: SoundProps) {
   const [music, setMusic] = useState(false);
   const graph = useRef<Graph | null>(null);
   const bed = useRef<Bed | null>(null);
+  /** THE audio context. Constructed synchronously inside the click (see the
+      gesture note in bed.ts) and shared by both paths, so that when the
+      recording is blocked the cavity fallback still has a context that was
+      born in the gesture and is therefore allowed to start. */
+  const audio = useRef<AudioContext | null>(null);
+  /** Pending teardown from the last turn-off. Cleared if the control is pressed
+      again before the fade finishes, or the timer closes the context the new
+      press is already using. */
+  const stopTimer = useRef(0);
   /** A second click while the recording is still opening would start a second
       one. The first press owns the toggle until it has finished. */
   const busy = useRef(false);
@@ -274,6 +283,13 @@ export default function Sound({ bedSources = NO_BED }: SoundProps) {
     graph.current = null;
     bed.current?.stop();
     bed.current = null;
+    // Closed here and nowhere else. Neither the bed nor the graph may close a
+    // context they did not create — the bed's stop() runs on a timer after its
+    // fade, and closing from there used to race the fallback that was about to
+    // reuse it.
+    const ctx = audio.current;
+    audio.current = null;
+    if (ctx) window.setTimeout(() => { void ctx.close().catch(() => {}); }, 1400);
   }, []);
 
   useEffect(() => teardown, [teardown]);
@@ -457,17 +473,41 @@ export default function Sound({ bedSources = NO_BED }: SoundProps) {
           // Fade out before tearing down, or the cut is a click. Long enough
           // for the room to fall away with it rather than being sliced off.
           g.master.gain.setTargetAtTime(0, g.ctx.currentTime, 0.3);
-          window.setTimeout(teardown, 1200);
         }
+        // Scheduled unconditionally. It used to hang off `g`, so turning the
+        // RECORDING off tore nothing down at all and left a live context and a
+        // playing element behind for the rest of the session.
+        window.clearTimeout(stopTimer.current);
+        stopTimer.current = window.setTimeout(teardown, 1200);
         setOn(false);
         setMusic(false);
         bus.emit('sound:toggle', false);
         return;
       }
 
-      // Prefer the recording. A missing or unplayable file resolves to null,
-      // and the cavity below is the fallback — so the control always sounds.
-      const next = await loadBed(bedSources);
+      /* ── everything to the first await is still inside the click ─────────
+         The context is constructed HERE, synchronously, because WebKit will
+         not let a context created in a later task leave 'suspended'. Both the
+         recording and the cavity then share it, which is what makes the
+         fallback survive a blocked recording. See the gesture note in bed.ts. */
+      window.clearTimeout(stopTimer.current);
+      const Ctor = window.AudioContext
+        ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const existing = audio.current;
+      const ctx = existing && existing.state !== 'closed' ? existing : new Ctor();
+      audio.current = ctx;
+      void ctx.resume();
+
+      // Prefer the recording. Missing, blocked or unplayable all resolve to
+      // null — and so does a THROW, which previously escaped this function and
+      // `toggle` alike and took the fallback down with it, leaving a control
+      // that did nothing at all on the platform where it was needed most.
+      let next: Bed | null = null;
+      try {
+        next = await loadBed(bedSources, ctx);
+      } catch {
+        next = null;
+      }
       if (next) {
         bed.current = next;
         setMusic(true);
@@ -476,9 +516,8 @@ export default function Sound({ bedSources = NO_BED }: SoundProps) {
         return;
       }
 
-      graph.current = buildGraph();
+      graph.current = buildGraph(ctx);
       const g = graph.current;
-      void g.ctx.resume();
       g.master.gain.setTargetAtTime(MASTER, g.ctx.currentTime, 0.9);
       // Open on a struck cavity rather than on silence.
       pluck(1.6);

@@ -48,10 +48,12 @@ const FADE_IN = 1.6;
 const FADE_OUT = 0.6;
 
 export interface Bed {
+  /** Owned by the CALLER, not by the bed. See load(). */
   ctx: AudioContext;
   master: GainNode;
   analyser: AnalyserNode;
-  /** Fade down and release everything. Safe to call twice. */
+  /** Fade down and release the element. Safe to call twice. Does NOT close the
+   *  context: the caller created it inside the click and closes it on teardown. */
   stop(): void;
 }
 
@@ -87,7 +89,25 @@ function playable(sources: readonly string[], el: HTMLAudioElement): string | nu
   return sources[0] ?? null;
 }
 
-export async function load(sources: readonly string[]): Promise<Bed | null> {
+/**
+ * ── THE GESTURE RULE — READ BEFORE EDITING ─────────────────────────────────
+ * Everything from the top of this function down to `el.play()` MUST stay
+ * synchronous, and `ctx` must have been constructed synchronously inside the
+ * click too — which is why it is a parameter and not built here.
+ *
+ * WebKit gates media on the gesture *currently being dispatched*: a
+ * stack-scoped indicator that is gone the moment the listener's task returns.
+ * Chromium gates on STICKY user activation instead — once you have clicked
+ * anywhere, a play() from any later microtask is allowed. Code written against
+ * Chromium therefore appears to work everywhere and is silently dead on iOS,
+ * which is exactly what happened here: this used to `await ctx.resume()` first,
+ * so play() landed a task later and WebKit rejected it. The recording failed,
+ * the synth fallback was then also built outside the gesture and could not
+ * start either, and an iPhone got a button that lit up and played nothing.
+ *
+ * So: no `await` above the play() call. Not one.
+ */
+export async function load(sources: readonly string[], ctx: AudioContext): Promise<Bed | null> {
   if (!sources.length) return null;
 
   const el = new Audio();
@@ -95,13 +115,13 @@ export async function load(sources: readonly string[]): Promise<Bed | null> {
   if (!src) return null;
   el.src = src;
   el.loop = true;
-  el.preload = 'none';
+  // 'auto', not 'none'. On iOS the media LOAD is gesture-gated as well as the
+  // playback, so with preload='none' the fetch has not even started when
+  // play() is called and the single gesture has to buy both.
+  el.preload = 'auto';
   // Same origin, so no CORS dance — but a tainted element would silently give
   // the analyser nothing but zeroes, and this says why it is not set.
   el.crossOrigin = null;
-
-  const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  const ctx = new Ctor();
 
   const master = ctx.createGain();
   master.gain.setValueAtTime(0.0001, ctx.currentTime);
@@ -127,13 +147,29 @@ export async function load(sources: readonly string[]): Promise<Bed | null> {
   // of the music, and it would flatten as the bed fades.
   shelf.connect(analyser);
 
-  await ctx.resume();
+  // ── the last synchronous statements, and the order matters ──────────────
+  // Both calls are made while the gesture is still on the stack. resume() is
+  // deliberately NOT awaited: its promise only settles once the audio thread
+  // has acknowledged the state change, which is a whole task later, and
+  // awaiting it here is precisely the bug described above.
+  let playing: Promise<void>;
   try {
-    await el.play();
+    playing = el.play();
   } catch {
-    // Blocked or unplayable. Tear down rather than leaving a dead context and
-    // a muted element behind, and let the caller fall back.
-    try { ctx.close(); } catch { /* already closing */ }
+    // Some WebKit builds throw synchronously rather than rejecting.
+    el.src = '';
+    return null;
+  }
+  void ctx.resume();
+
+  try {
+    await playing;
+  } catch {
+    // Blocked or unplayable. Release the element and let the caller fall back
+    // to the synth. The context is the caller's and is left alone — it was
+    // created in the gesture and is the fallback's only chance of starting.
+    el.pause();
+    el.src = '';
     return null;
   }
 
@@ -153,7 +189,6 @@ export async function load(sources: readonly string[]): Promise<Bed | null> {
       window.setTimeout(() => {
         el.pause();
         el.src = '';
-        try { ctx.close(); } catch { /* already closed */ }
       }, FADE_OUT * 1000 + 400);
     },
   };
