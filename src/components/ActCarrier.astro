@@ -80,6 +80,16 @@ const glyphs = (word: string) =>
   }
   .carrier__word {
     display: block;
+    /* The decode glyph set contains U+2014 EM DASH and '/', which are line-break
+       opportunities, so a scramble FRAME is breakable text even though the
+       settled words are single all-letter tokens that cannot wrap at any
+       viewport. Measured at 1350x940, the frame '—│—│—│—│' put the word on two
+       lines: the h1 grew 258.62 -> 387.93px and pushed the eyebrow, line, sub
+       and foot down 129.31px, scoring 0.063 CLS on its own. It lands on roughly
+       38% of loads at a 412px viewport. nowrap holds every frame on one line;
+       an over-wide frame overflows the gutter instead, which is what the box
+       already did before min-width existed. */
+    white-space: nowrap;
     font-size: min(
       clamp(56px, 13vw, 200px),
       calc((100vw - 2 * var(--gutter)) / var(--word-fit))
