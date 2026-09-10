@@ -14,7 +14,16 @@ export function init(root: ParentNode): void {
         mask: 'lines',
         linesClass: 'split-line',
         autoSplit: true,
-        aria: 'auto',
+        /* NOT 'auto'. That writes aria-label onto the split element AND
+           aria-hidden onto every line wrapper. These targets are <p> (role
+           paragraph), where naming is PROHIBITED — so the label was discarded
+           while the lines stayed hidden, and 21 paragraphs of body copy were
+           announced as nothing. 'none' adds neither: the text reads from the
+           line wrappers, which is what line-level splitting is safe for.
+           anims/word.ts must keep 'auto' — its targets are <h2>, where naming
+           is legal, and nine <section> landmarks take their accessible name
+           from those labels via aria-labelledby. */
+        aria: 'none',
         onSplit: (self) =>
           gsap.from(self.lines, {
             yPercent: 110,
