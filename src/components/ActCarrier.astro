@@ -85,7 +85,15 @@ const glyphs = (word: string) =>
       calc((100vw - 2 * var(--gutter)) / var(--word-fit))
     );
   }
-  .carrier__word--b { align-self: flex-end; text-align: right; }
+  /* min-width, NOT align-self:stretch. align-self other than stretch makes the
+     item shrink-to-fit, so the box tracks its text — and because this word is
+     pinned to the RIGHT edge, every ScrambleText frame moved its left edge.
+     That was the whole of the desktop CLS (0.097; 13 of the 15 recorded
+     shifts, worth 0.0938). min-width floors the box at the full measure so
+     ordinary frames cannot move it, while KEEPING flex-end so a freak frame
+     wider than the stage still overflows leftward exactly as it does today.
+     Switching to stretch instead would jog the ink 76px on those frames. */
+  .carrier__word--b { align-self: flex-end; text-align: right; min-width: 100%; }
 
   .carrier__eyebrow {
     margin: clamp(24px, 4vh, 44px) 0 0;
