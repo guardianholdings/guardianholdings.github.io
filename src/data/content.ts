@@ -392,8 +392,14 @@ export const CHANNEL = {
   word: "Contact",
   text: "One address, read every day. Founders and investors write to the same one; the role you pick marks the message. Nothing is sorted or ranked on the way in.",
   formHeading: "Tell us what you are building, or what you want to hold.",
+  /** Describes what Send DOES. It used to say "Send opens your mail client,
+      addressed and written. Nothing leaves this page on its own." — true of the
+      mailto-only form, false since the endpoint went live, and the worst
+      possible claim to leave sitting under a box asking permission to keep the
+      message. The mail-draft path still exists as the RECOVERY path, and the
+      status line says so at the moment it happens; it does not belong here. */
   formNote:
-    "Send opens your mail client, addressed and written. Nothing leaves this page on its own.",
+    "Send delivers the message from this page. A copy reaches the address you gave, and the reply comes from the desk that read it.",
   roles: ["A founder", "An investor"],
   /** The site's one sanctioned question mark. */
   footerAsk: "Built something, and nobody has heard it yet?",
