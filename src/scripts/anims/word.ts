@@ -39,12 +39,20 @@ export function init(root: ParentNode): void {
 
       // Masks are inline-block clips; the glyph inside slides up through them.
       gsap.set(split.masks, { display: 'inline-block', verticalAlign: 'top' });
-      gsap.set(chars, { display: 'inline-block', yPercent: 110, color: signal, willChange: 'transform' });
+      gsap.set(chars, { display: 'inline-block', yPercent: 110, color: signal });
 
       const tl = gsap.timeline({
         delay,
         defaults: { ease: EASE, duration: DURATION },
         scrollTrigger: enterTrigger(el, 'top 80%'),
+        // will-change belongs to the tween, not to the page. Setting it in the
+        // init gsap.set promoted every glyph from build() until its reveal
+        // fired — and since most openers are acts down the shaft that a visitor
+        // reaches minutes later, 63 of 63 .word-char elements were still
+        // holding a composited layer at scroll 0.
+        onStart: () => {
+          gsap.set(chars, { willChange: 'transform' });
+        },
         onComplete: () => {
           // Hand colour and transform back to the stylesheet (theme switches still recolour).
           gsap.set(chars, { clearProps: 'color,transform,willChange' });

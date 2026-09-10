@@ -63,13 +63,25 @@ export function restoreHot(root: ParentNode): void {
 }
 
 export function init(root: ParentNode): void {
-  fresh<HTMLElement>(root, '[data-anim="scramble"]', 'scramble').forEach((el) => {
+  const els = fresh<HTMLElement>(root, '[data-anim="scramble"]', 'scramble');
+  if (!els.length) return;
+
+  // Hoisted: this is a getComputedStyle on <html> and it returns the same
+  // value for every element. Inside the loop it ran once per element, each
+  // read landing after the previous iteration had written styles — a forced
+  // layout per element. anims/word.ts already reads it this way.
+  const signal = token('--signal-hi');
+
+  // Every per-element read happens here, before any tween is built, so the
+  // reads cannot interleave with the writes that tween construction makes.
+  const settledColours = els.map((el) => getComputedStyle(el).color);
+
+  els.forEach((el, i) => {
     const text = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
     if (!text) return;
     const delay = parseFloat(el.dataset.scrambleDelay ?? '0') || 0;
     const hot = el.dataset.scrambleHot ?? '';
-    const signal = token('--signal-hi');
-    const settled = getComputedStyle(el).color;
+    const settled = settledColours[i];
 
     inContext(() => {
       const tl = gsap.timeline({

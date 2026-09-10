@@ -17,7 +17,10 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { motionAllowed } from '@/lib/motion-policy';
-import '@/styles/cursor.css';
+/* cursor.css is NOT imported here. styles/global.css:5 already pulls it into
+   Base.css, which every page links; importing it from the island as well put a
+   second 3,945-byte copy inline in the head of all three pages — including the
+   two that never render this island at all. */
 
 const LERP = 0.18;
 const FRAME_LERP = 0.22;
