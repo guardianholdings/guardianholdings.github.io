@@ -401,6 +401,17 @@ export const CHANNEL = {
     "Founders first. Tell us what you built and it reaches the people who invest and then do the work. Investors reach the mandate: EUR 100,000, in your own name.",
   brandLine:
     "Guardian Holdings JSC is a private investment company in Sofia. We hold positions in liquid markets, private equity and real estate, across 4 sectors and nothing outside them.",
+  /** The background recording is used under CC BY-SA 4.0, which requires
+      attribution. THIS LINE IS THE ATTRIBUTION — it is a licence condition,
+      not decoration, and it must not be cut while that recording ships. It
+      renders only when a file is actually present in public/audio, so the
+      credit and the thing it credits appear and vanish together.
+      public/audio/LICENCE.txt holds the full terms and the source. */
+  soundCredit: {
+    text: "Sound · Mozart, Lacrimosa, transcribed by Thalberg. Performed by Lệ Xuân.",
+    licence: "CC BY-SA 4.0",
+    href: "https://creativecommons.org/licenses/by-sa/4.0/",
+  },
   /** Footer form of the canonical intermediary sentence — the legal name is
       already spent higher up the act. Plural when the class is the subject;
       never the definite singular, which points at one unnamed firm. */

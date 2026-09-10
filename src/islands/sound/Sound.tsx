@@ -244,12 +244,15 @@ function buildGraph(): Graph {
 }
 
 export interface SoundProps {
-  /** Resolved at build time in Base.astro. Null means no recording shipped,
-   *  and the control plays the synthesised cavity instead. */
-  bedSrc?: string | null;
+  /** Every shipped encoding of the recording, resolved at build time in
+   *  Base.astro, in preference order. Empty means no recording shipped and the
+   *  control plays the synthesised cavity instead. */
+  bedSources?: readonly string[];
 }
 
-export default function Sound({ bedSrc = null }: SoundProps) {
+const NO_BED: readonly string[] = [];
+
+export default function Sound({ bedSources = NO_BED }: SoundProps) {
   const [on, setOn] = useState(false);
   /** True when the recording is what is playing. Gates every synth-only effect. */
   const [music, setMusic] = useState(false);
@@ -405,10 +408,11 @@ export default function Sound({ bedSrc = null }: SoundProps) {
       const b = bed.current;
       if (!b) return;
       levels(b.analyser, out);
-      let max = 1e-4;
-      for (const v of out) max = Math.max(max, v);
+      // Absolute level, not normalised against the loudest band this frame:
+      // dividing by the frame max pins one bar at full height forever and
+      // makes the other three a ratio to it, which reads as a stuck meter.
       for (let n = 0; n < bars.length; n += 1) {
-        bars[n].style.height = `${(2 + (out[n] / max) * 8).toFixed(1)}px`;
+        bars[n].style.height = `${(2 + Math.min(1, out[n]) * 8).toFixed(1)}px`;
       }
     };
 
@@ -463,7 +467,7 @@ export default function Sound({ bedSrc = null }: SoundProps) {
 
       // Prefer the recording. A missing or unplayable file resolves to null,
       // and the cavity below is the fallback — so the control always sounds.
-      const next = await loadBed(bedSrc);
+      const next = await loadBed(bedSources);
       if (next) {
         bed.current = next;
         setMusic(true);
@@ -484,7 +488,7 @@ export default function Sound({ bedSrc = null }: SoundProps) {
     } finally {
       busy.current = false;
     }
-  }, [on, teardown, bedSrc]);
+  }, [on, teardown, bedSources]);
 
   // Reduced motion is also a reduced-stimulus preference; do not offer it.
   if (typeof window !== 'undefined' && !motionAllowed()) return null;

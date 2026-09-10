@@ -13,6 +13,11 @@
  * Worker exists, and pressing Send is never a no-op.
  */
 import { CHANNEL, COMPANY } from '../data/content';
+import { bedSources } from '../lib/audio-bed';
+
+/* The attribution below is a condition of the recording's licence, so it is
+   tied to whether a recording actually shipped rather than hard-coded on. */
+const hasBed = bedSources().length > 0;
 
 const wordFit = (CHANNEL.word.length * 0.72).toFixed(2);
 const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
@@ -115,6 +120,14 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
         <p class="readout">© {new Date().getFullYear()} {COMPANY.name}</p>
         <p class="readout channel__legalline">{CHANNEL.legal}</p>
         <a class="readout channel__privacy" href="/privacy-policy">Privacy policy</a>
+        {hasBed && (
+          <p class="readout channel__credit">
+            {CHANNEL.soundCredit.text}{' '}
+            <a href={CHANNEL.soundCredit.href} rel="license noopener noreferrer" target="_blank">
+              {CHANNEL.soundCredit.licence}
+            </a>
+          </p>
+        )}
       </div>
     </footer>
   </div>
@@ -207,6 +220,22 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
   .channel__legalline { max-width: 60ch; line-height: 1.6; letter-spacing: 0.08em; }
   .channel__privacy { border-bottom: 1px solid var(--hairline-strong); }
   .channel__privacy:hover { color: var(--signal-hi); }
+
+  /* Its own line under the legal row rather than a fourth column in it.
+     text-transform is cleared because .readout upper-cases, and a performer's
+     name in a credit should read the way that person writes it. */
+  .channel__credit {
+    flex-basis: 100%;
+    text-transform: none;
+    letter-spacing: 0.06em;
+    line-height: 1.7;
+    max-width: 70ch;
+  }
+  .channel__credit a {
+    color: inherit;
+    border-bottom: 1px solid var(--hairline-strong);
+  }
+  .channel__credit a:hover { color: var(--signal-hi); }
 
   @media (max-width: 900px) {
     .channel__grid { grid-template-columns: 1fr; }

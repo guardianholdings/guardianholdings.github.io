@@ -1,0 +1,16 @@
+Mozart, Requiem in D minor, K. 626 — "Lacrimosa"
+Piano transcription by Sigismond Thalberg, Op. 70 No. 5A.
+
+Performance and recording: Lệ Xuân, 24 December 2018.
+Licence: Creative Commons Attribution-ShareAlike 4.0 International
+         https://creativecommons.org/licenses/by-sa/4.0
+Source:  https://commons.wikimedia.org/wiki/File:Mozart,_Requiem_in_D_minor,_%27Lacrimosa%27_%E2%80%93_piano_arrangement.ogg
+
+The .ogg is the file as downloaded (Ogg Vorbis, 44.1 kHz stereo, ~160 kbps,
+sha256 64da4163217f10fce0aee705c7a48f1e…). The .m4a is that same recording
+re-encoded to AAC at 96 kbps so Safari can play it; the licence permits
+reproduction in any format.
+
+Mozart's score is public domain. THIS RECORDING IS NOT — it is used under the
+CC BY-SA licence above, which requires attribution. The credit line on the site
+is what satisfies that. Do not remove it while this file is in use.

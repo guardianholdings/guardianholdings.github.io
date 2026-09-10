@@ -63,10 +63,36 @@ export interface Bed {
  * Must be called from a user gesture: creating the context and calling play()
  * outside one is what autoplay policy exists to stop.
  */
-export async function load(src: string | null): Promise<Bed | null> {
-  if (!src) return null;
+/**
+ * MIME types for the encodings the build may have shipped, so the browser can
+ * be asked what it can decode before anything is fetched. Safari plays no Ogg;
+ * some Firefox builds ship without an AAC decoder. Asking is two lines and
+ * saves a download that would end in silence.
+ */
+const MIME: Record<string, string> = {
+  '.m4a': 'audio/mp4; codecs="mp4a.40.2"',
+  '.mp3': 'audio/mpeg',
+  '.ogg': 'audio/ogg; codecs="vorbis"',
+};
+
+/** First source this browser claims it can play. */
+function playable(sources: readonly string[], el: HTMLAudioElement): string | null {
+  for (const src of sources) {
+    const type = MIME[src.slice(src.lastIndexOf('.'))];
+    // canPlayType returns '', 'maybe' or 'probably'; only '' is a no.
+    if (!type || el.canPlayType(type)) return src;
+  }
+  // Nothing claimed, but a claim is not a guarantee in either direction. Try
+  // the first anyway: a failure here falls back to the synth, same as silence.
+  return sources[0] ?? null;
+}
+
+export async function load(sources: readonly string[]): Promise<Bed | null> {
+  if (!sources.length) return null;
 
   const el = new Audio();
+  const src = playable(sources, el);
+  if (!src) return null;
   el.src = src;
   el.loop = true;
   el.preload = 'none';
@@ -88,12 +114,18 @@ export async function load(src: string | null): Promise<Bed | null> {
   shelf.gain.value = -4;
 
   const analyser = ctx.createAnalyser();
-  analyser.fftSize = 256;
-  analyser.smoothingTimeConstant = 0.8;
+  // 1024 gives 43 Hz bins. At 256 the lowest band was a bin and a half wide,
+  // which is not enough resolution to see a piano's left hand at all.
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.7;
 
   const source = ctx.createMediaElementSource(el);
-  source.connect(shelf).connect(master).connect(analyser);
-  analyser.connect(ctx.destination);
+  source.connect(shelf).connect(master).connect(ctx.destination);
+  // The analyser is a TAP taken before the master gain, and is deliberately
+  // not connected onward — a node with no output still analyses. Reading after
+  // the gain would make the meter a readout of the volume setting rather than
+  // of the music, and it would flatten as the bed fades.
+  shelf.connect(analyser);
 
   await ctx.resume();
   try {
@@ -138,10 +170,30 @@ export async function load(src: string | null): Promise<Bed | null> {
 export function levels(analyser: AnalyserNode, out: number[]): void {
   const bins = new Uint8Array(analyser.frequencyBinCount);
   analyser.getByteFrequencyData(bins);
-  const band = Math.max(1, Math.floor(bins.length / out.length));
+
+  // Log-spaced bands, not equal slices of the spectrum. Splitting 0–22 kHz
+  // into four equal parts puts every note a piano plays inside the first one
+  // and leaves the other three reading zero for the whole piece — which is
+  // what the first version of this did, and it looked like a frozen meter.
+  const nyquist = analyser.context.sampleRate / 2;
+  const perBin = bins.length / nyquist;
+  // 40 Hz to 8 kHz, not to Nyquist. A piano's fundamentals stop at 4186 Hz and
+  // a lossy encode has little left above 8 k, so a band reaching to 16 k is a
+  // bar that never moves — which reads as a broken meter, not as quiet.
+  const LOW = 40;
+  const HIGH = 8000;
+
   for (let i = 0; i < out.length; i += 1) {
+    const lo = LOW * (HIGH / LOW) ** (i / out.length);
+    const hi = LOW * (HIGH / LOW) ** ((i + 1) / out.length);
+    const from = Math.max(1, Math.floor(lo * perBin));
+    const to = Math.max(from + 1, Math.min(bins.length, Math.ceil(hi * perBin)));
+
     let sum = 0;
-    for (let j = i * band; j < (i + 1) * band && j < bins.length; j += 1) sum += bins[j];
-    out[i] = sum / band / 255;
+    for (let j = from; j < to; j += 1) sum += bins[j];
+    // The top bands of a lossy encode are genuinely near-empty, so a fixed
+    // tilt lifts them into the same visual range rather than pinning them low.
+    const tilt = 1 + i * 0.5;
+    out[i] = Math.min(1, (sum / (to - from) / 255) * tilt);
   }
 }
