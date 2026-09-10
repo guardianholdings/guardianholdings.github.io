@@ -1,0 +1,64 @@
+# ── SIGNAL on Cloudflare Workers ──────────────────────────────────────────
+# Static-asset Worker. `dist/` is uploaded to Cloudflare's asset store and
+# served from the edge; because there is no `main`, no Worker code runs on a
+# request for a file that exists, so those requests are free and unmetered on
+# the free plan. The 100k/day free invocation limit only starts counting if a
+# handler is added later.
+#
+# Why this and not GitHub Pages:
+#   - Pages' free tier only serves from a PUBLIC repo. This does not care, so
+#     the whole property — signal/, admin/, worker/ — can stay private.
+#   - A custom domain here is a DNS record on a zone Cloudflare already runs.
+#     There is no CNAME file in the build, so no github.io -> apex redirect to
+#     work around when staging.
+#   - The contact endpoint can move onto this same Worker at /api/contact,
+#     which makes it same-origin: no CORS, no ALLOWED_ORIGINS list, one deploy.
+#     See worker/ for the handler that would move here.
+#
+# MX RECORDS ARE UNTOUCHED BY THIS. Serving a site from Workers adds no mail
+# routing of any kind. Company mail stays on iCloud exactly as it is.
+
+name = "guardian-holdings"
+compatibility_date = "2026-09-01"
+
+# Keep the workers.dev URL alive as staging. Declaring any [[routes]] turns it
+# off by default, and losing it would mean the only way to check a build is on
+# the live domain.
+workers_dev = true
+
+[assets]
+directory = "./dist"
+# Astro emits privacy-policy/index.html; "auto-trailing-slash" is the default
+# and resolves /privacy-policy to it without a redirect.
+html_handling = "auto-trailing-slash"
+# src/pages/404.astro builds to dist/404.html at the root, which is where this
+# mode looks. An unknown path gets the site's own page, with a 404 status —
+# not a 200 soft-404, and not Cloudflare's bare one.
+not_found_handling = "404-page"
+
+# ── The live domain ───────────────────────────────────────────────────────
+# Live since the apex was taken over from the Workers dashboard (Custom Domain
+# add swaps the record in one step, which is what Cloudflare refuses to do
+# while a conflicting A/CNAME record still stands — error 100117). These blocks
+# make the config match reality, so a deploy from a clean checkout reattaches
+# both hostnames instead of quietly dropping them.
+#
+# MX IS NOT AFFECTED. Removing an A record does not touch MX, and a custom
+# domain adds no mail routing of any kind. Company mail on iCloud
+# (mx01/mx02.mail.icloud.com) and the SPF TXT record are untouched by this.
+
+[[routes]]
+pattern = "guardianholdingsjsc.com"
+custom_domain = true
+
+# www had no record at all before this — it did not resolve. It serves the same
+# assets rather than redirecting, because an assets-only Worker has no code
+# path to redirect from, and adding one would start metering invocations for
+# every request on the zone. Every page declares a canonical on the apex, so
+# the duplicate is already resolved for crawlers. If www should hard-redirect
+# instead, that is a free Redirect Rule in the dashboard
+# (Rules -> Redirect Rules -> www to apex, 301), not a change here.
+
+[[routes]]
+pattern = "www.guardianholdingsjsc.com"
+custom_domain = true

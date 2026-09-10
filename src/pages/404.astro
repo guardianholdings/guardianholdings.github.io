@@ -1,0 +1,74 @@
+---
+/**
+ * The one page nobody arrives at on purpose. No instrument: the shaft is a
+ * built sequence of ten acts and there is nothing here to sequence, so this
+ * runs as an ordinary document — the same decision /privacy-policy made.
+ *
+ * Copy is the deck's /404 block verbatim, with one change. The deck's meta
+ * description says "3 strategies"; the client settled on 4 (Private Equity is
+ * the fourth). The count is a fact about the company, and it may not disagree
+ * with itself across pages — see the six strings in content.ts that carry it.
+ *
+ * The deck's second link is "Contact →", pointing at a /contact route the
+ * scroll-only build never shipped. It goes to the address instead: act 09's
+ * own mailto, which is what "contact" means on this property. A dead-end page
+ * is the wrong place to send someone to an anchor that needs JS to arrive.
+ */
+import Base from '../layouts/Base.astro';
+import { COMPANY } from '../data/content';
+---
+<Base
+  title="Page not found — Guardian Holdings JSC"
+  description="That page is not here. Guardian Holdings JSC is in Sofia: capital and 6 operating functions for founders, 4 strategies for investors."
+  noindex
+>
+  <section class="lost">
+    <p class="readout">Error 404 · No such page</p>
+    <h1 class="h-section">This address is quiet.</h1>
+    <p class="lede">There's no page here; it either moved or it never existed.</p>
+
+    <nav class="lost__out" aria-label="Where to go instead">
+      <a href="/">Home <span aria-hidden="true">→</span></a>
+      <a href={`mailto:${COMPANY.email}`}>Write to us <span aria-hidden="true">→</span></a>
+    </nav>
+  </section>
+</Base>
+
+<style>
+  /* Viewport-tall and centred, which a page of four lines can afford and a
+     page of body copy cannot — hence no shared class with .legal. */
+  .lost {
+    min-height: 100svh;
+    display: grid;
+    align-content: center;
+    justify-items: start;
+    max-width: 56ch;
+    margin: 0 auto;
+    padding: var(--gutter);
+  }
+  .lost h1 { margin: 16px 0 20px; }
+  .lost .lede { color: var(--ink-muted); margin: 0; }
+
+  .lost__out {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 32px;
+    margin-top: 48px;
+  }
+  .lost__out a {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+    color: var(--signal-hi);
+    /* Underline rather than border-bottom: the padding below is there to make
+       a 44px target on a page whose whole job is getting someone back out of
+       here, and a border would sit at the bottom of that padding, floating
+       11px clear of the words. */
+    text-decoration: underline;
+    text-decoration-color: var(--hairline-strong);
+    text-underline-offset: 5px;
+    display: inline-block;
+    padding-block: 11px;
+  }
+  .lost__out a:hover { text-decoration-color: var(--signal); }
+</style>

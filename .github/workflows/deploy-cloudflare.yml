@@ -1,0 +1,65 @@
+# Publish the site to Cloudflare Workers on push.
+#
+# The alternative to deploy.yml (GitHub Pages). Run ONE of the two — with both
+# enabled every push publishes twice, to two different hosts, and the two can
+# drift. Delete the one you are not using.
+#
+# Needs two repository secrets:
+#   CLOUDFLARE_API_TOKEN   — created from the "Edit Cloudflare Workers" template
+#   CLOUDFLARE_ACCOUNT_ID  — Workers dashboard, right-hand column
+name: Deploy to Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A half-finished upload is a half-broken site, so deploys queue rather than
+# cancelling each other.
+concurrency:
+  group: cloudflare
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Same gate as the Pages workflow: a red build publishes nothing.
+      - run: pnpm test
+      - run: pnpm check
+      - run: pnpm build
+
+      # Without this the job goes red on every push until both secrets exist,
+      # and a red build that is actually fine trains you to ignore red builds.
+      # The `secrets` context is not readable from a job-level `if`, so the
+      # check has to happen in a step.
+      - id: guard
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$ACCOUNT" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID not set — built and tested, but not deployed."
+          fi
+
+      - uses: cloudflare/wrangler-action@v3
+        if: steps.guard.outputs.configured == 'true'
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

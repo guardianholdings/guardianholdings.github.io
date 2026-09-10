@@ -1,0 +1,28 @@
+# Cache and response headers. Read by Cloudflare Workers Static Assets at
+# deploy time; ignored by a plain static server, so local previews are
+# unaffected.
+#
+# The rule is simple: a path whose filename carries a content hash can be
+# cached forever, because a change to the file changes its name. Anything
+# else has a stable name and must stay revalidatable, or a replaced file
+# would be invisible to anyone who had already loaded the old one.
+
+# Astro content-hashes everything here — JS, CSS and the two font faces.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# NOT hashed: lacrimosa.m4a keeps its name if the recording is ever replaced.
+# A week, revalidated, rather than immutable.
+/audio/*
+  Cache-Control: public, max-age=604800
+
+/og.png
+  Cache-Control: public, max-age=86400
+/favicon.svg
+  Cache-Control: public, max-age=86400
+
+# HTML deliberately gets no max-age: a deploy has to be visible immediately.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin

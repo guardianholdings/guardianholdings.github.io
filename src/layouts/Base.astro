@@ -16,15 +16,21 @@ interface Props {
   description?: string;
   /** The scroll-only home page carries the full instrument; /privacy-policy does not. */
   instrument?: boolean;
+  /** Keep the page out of the index and out of the sitemap. /404 only. */
+  noindex?: boolean;
 }
 
 const {
   title = META.title,
   description = META.description,
   instrument = false,
+  noindex = false,
 } = Astro.props;
 
-const canonical = new URL(Astro.url.pathname, Astro.site).href;
+/* A noindexed page gets no canonical. /404 is built once, at /404, but served
+   at every unknown path, so a self-canonical would name a URL the reader is
+   not on — one wrong answer is worse than no answer. */
+const canonical = noindex ? null : new URL(Astro.url.pathname, Astro.site).href;
 
 /* Every shipped encoding of the background bed, resolved at build time. The
    browser picks the one it can actually decode; an empty list means the sound
@@ -68,7 +74,8 @@ const jsonLd = {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {noindex && <meta name="robots" content="noindex, follow" />}
     <meta name="theme-color" content="#0a0907" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
