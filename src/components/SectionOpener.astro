@@ -31,15 +31,17 @@ const pad = (n: number) => String(n).padStart(2, '0');
 <header class:list={["opener", compact && "opener--compact"]} data-depth style="--depth:-110px">
   <hr class="rule rule--strong" />
 
-  {/* The animation hook sits on an inner span so the heading can also carry
-      the kicker as hidden text. The visible outline of this page is nine
-      display words, four of which ("Readings", "Hands", "Held", "The watch")
-      name nothing without the visuals; a crawler or a screen reader now gets
-      "Readings · For founders · What we look for". SplitText writes its own
-      aria-label onto the element it splits, which is why the hidden text
-      cannot live inside the animated span. One line: the compressor drops
-      whitespace-only text between tags, and this heading must not gain one. */}
-  <h2 class="opener__word display-word" id={id} style={`--word-fit:${fit}`}><span data-anim="word">{word}</span><span class="sr-only">{` · ${kicker}`}</span></h2>
+  {/* The heading carries the kicker as hidden text. The visible outline of
+      this page is nine display words, four of which ("Readings", "Hands",
+      "Held", "The watch") name nothing without the visuals; a crawler or a
+      screen reader now gets "Readings · For founders · What we look for".
+      The heading itself stays the animation target: SplitText writes an
+      aria-label onto whatever it splits, and a plain span may not carry one
+      (axe: aria-prohibited-attr). word.ts tells it to leave .sr-only alone,
+      so the label it writes is this whole text and the stagger counts only
+      the word. One line: the compressor drops whitespace-only text between
+      tags, and this heading must not gain one. */}
+  <h2 class="opener__word display-word" id={id} data-anim="word" style={`--word-fit:${fit}`}>{word}<span class="sr-only">{` · ${kicker}`}</span></h2>
 
   <div class="opener__meta">
     <p class="mono-para" data-anim="lines">{text}</p>

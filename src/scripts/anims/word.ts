@@ -33,6 +33,11 @@ export function init(root: ParentNode): void {
         charsClass: 'word-char',
         wordsClass: 'word-word',
         aria: 'auto',
+        // The openers carry their kicker as an .sr-only span inside the
+        // heading. Left unsplit, it stays out of the stagger and out of the
+        // masks, while the aria-label SplitText writes (the element's whole
+        // textContent) still includes it — which is the point of it.
+        ignore: '.sr-only',
       });
       const chars = split.chars;
       if (!chars.length) return;
