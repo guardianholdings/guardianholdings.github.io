@@ -2,89 +2,126 @@
 /**
  * Deliberately undesigned. The instrument does not run here: no HUD, no field,
  * no scroll choreography — a legal document should be readable, printable and
- * boring. Body copy still needs a pass from counsel; the [LEGAL REVIEW] markers
- * from the previous draft are carried over rather than silently resolved.
+ * boring.
+ *
+ * Every statement below is checked against what the site actually does as of
+ * the effective date: the form posts to worker/contact.ts, which relays the
+ * message through Resend and mails the visitor a copy; Google Analytics 4 runs
+ * on every production page (Base.astro); nothing is written to sessionStorage
+ * or localStorage any more. When any of that changes, this page changes with
+ * it. It is the page the consent box on the form links to, and for a while it
+ * described a mail-draft form that no longer existed.
  */
 import Base from '../layouts/Base.astro';
 import { COMPANY } from '../data/content';
+
+const EFFECTIVE = '11 September 2026';
 ---
 <Base
   title="Privacy policy — Guardian Holdings JSC"
-  description="What Guardian Holdings JSC collects when you write to us, why we process it, how long we keep it, and the rights you have over it."
+  description="What Guardian Holdings JSC collects when you visit and when you write to us, why we process it, how long we keep it, and the rights you have over it."
 >
   <article class="legal">
-    <p class="readout">Draft · Legal review</p>
+    <p class="readout">Effective {EFFECTIVE}</p>
     <h1 class="h-section">Privacy policy.</h1>
     <p class="lede">
-      What we collect when you write to us, why we process it, how long we keep it,
-      and the rights you have over it.
-    </p>
-
-    <p class="legal__notice">
-      Working draft prepared for review by counsel. Statements marked [LEGAL REVIEW]
-      must be confirmed or completed before this page becomes the operative policy.
+      What we collect when you visit and when you write to us, why we process it,
+      how long we keep it, and the rights you have over it.
     </p>
 
     <h2>Who we are</h2>
     <p>
-      {COMPANY.name}, {COMPANY.street}, {COMPANY.city}, {COMPANY.country}.
+      {COMPANY.name}, UIC {COMPANY.uic}, {COMPANY.street}, {COMPANY.city}, {COMPANY.country}.
       Write to <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> about anything
       on this page.
     </p>
 
     <h2>What this policy covers</h2>
     <p>
-      This site. It does not cover any separate agreement you sign with us, or the
-      licensed investment intermediary that holds a separately managed account.
+      This site, guardianholdingsjsc.com. It does not cover any separate agreement
+      you sign with us, or any EU licensed investment intermediary that holds a
+      separately managed account for you; their own privacy notice governs that
+      account.
     </p>
 
-    <h2>Data we collect</h2>
+    <h2>What we collect when you write to us</h2>
     <p>
-      Only what you send us: the name, email address, stated role and message you put
-      into the contact form. The form is not connected to a mailbox — it opens a draft
-      in your own email client — so nothing is transmitted to us until you send it
-      yourself.
+      The name, email address, stated role and message you put into the contact
+      form. Pressing Send delivers it to us from this page through Resend, our
+      email delivery provider, and a copy of your message is emailed to the
+      address you gave, so you have a record of what you sent. Your IP address is
+      used to limit repeated submissions and, if a bot check is running on the
+      form, to verify it; we do not store it. If the send fails, the form opens a
+      draft in your own email client instead, and nothing reaches us until you
+      send it yourself.
     </p>
 
-    <h2>Storage on your device</h2>
+    <h2>What we collect when you visit</h2>
     <p>
-      This site sets no cookies and runs no analytics. It stores one value in
-      <code>sessionStorage</code> to remember whether you switched sound on. It is
-      readable only by this site and is discarded when you close the tab.
+      This site runs Google Analytics 4. It sets the <code>_ga</code> and
+      <code>_ga_*</code> cookies in your browser and sends the pages you view,
+      your approximate location, and your device and browser to Google, which we
+      use to see how the site is read. Cloudflare, which serves the site, records
+      requests for security and performance under its own privacy policy; we keep
+      no server logs of our own. Nothing else is stored on your device: the sound
+      control keeps no memory between visits.
     </p>
 
     <h2>Why we process it, and on what basis</h2>
     <p>
-      To answer you. The lawful bases are GDPR Art. 6(1)(b) — steps taken at your
-      request before entering a contract — and Art. 6(1)(f), our legitimate interest
-      in responding to enquiries about our business.
+      Your message: to answer it. The basis is your consent, which you give by
+      ticking the box on the form (GDPR Art. 6(1)(a)); where your message concerns
+      a mandate or an investment, it is also a step taken at your request before a
+      contract (Art. 6(1)(b)). You may withdraw consent at any time by writing to
+      us, and we then delete the correspondence unless a legal duty requires us to
+      keep it.
+    </p>
+    <p>
+      Analytics: our legitimate interest in understanding how the site is used
+      (Art. 6(1)(f)). You can prevent it by blocking cookies for this site in your
+      browser, or with Google's opt-out browser add-on.
     </p>
 
     <h2>How long we keep it</h2>
-    <p>Correspondence: [LEGAL REVIEW] 24 months. Server logs: 30 days.</p>
+    <p>
+      Correspondence: 24 months from the last message in the exchange, then
+      deleted, unless it leads to an agreement, in which case it is kept with that
+      agreement. Analytics: Google keeps the data for up to 14 months; the
+      <code>_ga</code> cookie expires after 2 years unless you delete it sooner.
+    </p>
 
     <h2>Who receives it</h2>
-    <p>[LEGAL REVIEW] Our hosting provider, and no one else.</p>
+    <p>
+      Cloudflare, Inc. (hosting, the contact endpoint, rate limiting and, when it
+      is switched on, the Turnstile bot check); Resend, Inc. (delivery of your
+      message to us and of the copy to you); Apple Inc. (the iCloud mailbox that
+      receives it); Google LLC (analytics). Each processes it on our instructions.
+      Nobody else. We do not sell it, and we do not use it for advertising.
+    </p>
 
     <h2>International transfers</h2>
-    <p>[LEGAL REVIEW]</p>
+    <p>
+      Cloudflare, Resend, Apple and Google are United States companies and may
+      process data there. All four are certified under the EU–US Data Privacy
+      Framework, which the European Commission recognises as adequate protection.
+      Write to us for a copy of the safeguards.
+    </p>
 
     <h2>Your rights</h2>
     <p>
-      You may ask for a copy of what we hold, ask us to correct or erase it, object to
-      processing, or ask us to restrict it. Write to
+      You may ask for a copy of what we hold, ask us to correct or erase it, object
+      to processing, ask us to restrict it, or withdraw your consent. Write to
       <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>. You may also complain to
       the Bulgarian Commission for Personal Data Protection, 2 Prof. Tsvetan Lazarov
       Blvd, Sofia 1592, <a href="https://cpdp.bg" rel="noreferrer">cpdp.bg</a>.
     </p>
 
     <h2>Changes to this policy</h2>
-    <p>[LEGAL REVIEW] We will date and publish any change on this page.</p>
+    <p>We date and publish any change on this page. This version took effect on {EFFECTIVE}.</p>
 
     <p class="legal__back"><a href="/">← Return</a></p>
   </article>
 </Base>
-
 <style>
   .legal {
     max-width: 68ch;
@@ -103,12 +140,5 @@ import { COMPANY } from '../data/content';
   .legal .lede { margin-bottom: 32px; }
   .legal a { color: var(--signal-hi); border-bottom: 1px solid var(--hairline-strong); }
   .legal code { font-size: 0.8125rem; color: var(--ink); }
-  .legal__notice {
-    border-left: 1px solid var(--signal);
-    padding-left: 20px;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.04em;
-  }
   .legal__back { margin-top: 56px; }
 </style>

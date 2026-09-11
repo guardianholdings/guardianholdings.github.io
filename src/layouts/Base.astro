@@ -60,6 +60,18 @@ const jsonLd = {
     addressCountry: 'BG',
   },
   geo: { '@type': 'GeoCoordinates', latitude: COMPANY.lat, longitude: COMPANY.lon },
+  /* The checkable facts. `identifier` is the Commercial Register UIC, which is
+     what a Bulgarian register lookup keys on; the VAT number is the same
+     digits with the country prefix. */
+  identifier: { '@type': 'PropertyValue', propertyID: 'UIC', value: COMPANY.uic },
+  vatID: `BG${COMPANY.uic}`,
+  foundingDate: COMPANY.founded,
+  contactPoint: {
+    '@type': 'ContactPoint',
+    email: COMPANY.email,
+    contactType: 'Enquiries',
+    availableLanguage: ['English', 'Bulgarian'],
+  },
   knowsAbout: [
     'Private equity', 'Liquid markets', 'Real estate',
     'Defence', 'Commodities', 'Technology', 'Financial services',
@@ -84,7 +96,7 @@ const jsonLd = {
     <meta property="og:site_name" content="Guardian Holdings JSC" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={canonical} />
+    {canonical && <meta property="og:url" content={canonical} />}
     {/* The card and its image are declared together, which is the rule the
         previous comment here set: a summary_large_image whose image 404s
         collapses in the validator and Slack and LinkedIn cache the failure.

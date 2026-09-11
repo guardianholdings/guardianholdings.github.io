@@ -124,6 +124,42 @@ function followFocus(): () => void {
 }
 
 /**
+ * Fly to a named control and put focus in it — the "Write to us" door in act
+ * 04. A hash link cannot do this: `main` is fixed, so there is nothing for the
+ * browser to scroll, and the act that owns the field is visibility:hidden
+ * until the camera is near it, which is also why focus has to wait for
+ * arrival rather than fire at once. Registered once, outside build(): with
+ * reduced motion there is no tunnel, scrollToReveal returns null, and the
+ * browser's own scrollIntoView is the right answer.
+ */
+function goto(id: string): void {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const focusWhenVisible = (deadline: number): void => {
+    const shown = el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+    if (shown) {
+      el.focus({ preventScroll: true });
+      return;
+    }
+    if (performance.now() < deadline) requestAnimationFrame(() => focusWhenVisible(deadline));
+  };
+  const y = scrollToReveal(el);
+  if (y === null) {
+    el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
+    focusWhenVisible(performance.now() + 2000);
+    return;
+  }
+  const lenis = smooth?.lenis;
+  if (lenis) {
+    lenis.scrollTo(y, { lock: true, onComplete: () => focusWhenVisible(performance.now() + 1000) });
+  } else {
+    window.scrollTo({ top: y, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    focusWhenVisible(performance.now() + 3000);
+  }
+}
+bus.on('goto', goto);
+
+/**
  * Pin distances are measured against a document that is still growing at first
  * paint. With no <ClientRouter /> there is no astro:page-load to hand us a
  * second, later refresh for free, so every growth event has to be covered

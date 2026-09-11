@@ -76,14 +76,21 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
             <p class="field__error" id="error-email" data-error-for="email" hidden></p>
           </label>
 
-          <fieldset class="field field--roles">
+          {/* No default. "the role you pick marks the message" was only true
+              for a visitor who touched the row: with "A founder" pre-ticked, an
+              investor who skipped it was filed as a founder. Now a role is
+              genuinely picked — checked in the script for the JS path and in
+              the Worker for the no-JS POST, because `novalidate` means the
+              browser will not enforce `required` on the group. */}
+          <fieldset class="field field--roles" aria-describedby="error-role">
             <legend class="mono field__label">I am</legend>
-            {CHANNEL.roles.map((role, i) => (
+            {CHANNEL.roles.map((role) => (
               <label class="radio">
-                <input type="radio" name="role" value={role} checked={i === 0} />
+                <input type="radio" name="role" value={role} required />
                 <span class="mono">{role}</span>
               </label>
             ))}
+            <p class="field__error" id="error-role" data-error-for="role" hidden></p>
           </fieldset>
 
           <label class="field">
@@ -183,7 +190,10 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
         <div class="channel__block">
           <p class="eyebrow">Locate</p>
           <p class="readout">{COMPANY.coords}</p>
-          <p class="readout channel__clock">Local <span data-channel-clock>--:--:--</span> EET</p>
+          {/* The zone label is computed with the time. It was the literal
+              "EET", which Sofia leaves for EEST from the last Sunday of March
+              to the last Sunday of October — seven months of every year. */}
+          <p class="readout channel__clock">Local <span data-channel-clock>--:--:--</span>{' '}<span data-channel-zone></span></p>
         </div>
       </div>
     </div>
@@ -196,12 +206,18 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
       <p class="channel__brand">{CHANNEL.brandLine}</p>
 
       <div class="channel__legal">
-        <p class="readout">© {new Date().getFullYear()} {COMPANY.name}</p>
+        {/* Name, seat and UIC: what Bulgarian Commerce Act Art. 13 asks a
+            trader's website to carry, and the one fact here a counterparty can
+            check in a register. The full address is in the Visit block. */}
+        <p class="readout">© {new Date().getFullYear()} {COMPANY.name} · UIC {COMPANY.uic} · Seat: {COMPANY.city}</p>
         <p class="readout channel__legalline">{CHANNEL.legal}</p>
         <a class="readout channel__privacy" href="/privacy-policy/">Privacy policy</a>
         {hasBed && (
           <p class="readout channel__credit">
             {CHANNEL.soundCredit.text}{' '}
+            <a href={CHANNEL.soundCredit.sourceHref} rel="noopener noreferrer" target="_blank">
+              {CHANNEL.soundCredit.performer}<span class="sr-only"> (opens in a new tab)</span>
+            </a>.{' '}
             <a href={CHANNEL.soundCredit.href} rel="license noopener noreferrer" target="_blank">
               {CHANNEL.soundCredit.licence}<span class="sr-only"> (opens in a new tab)</span>
             </a>
@@ -286,6 +302,7 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
   .field--roles { display: flex; flex-direction: row; align-items: center; gap: 24px; flex-wrap: wrap; }
   .field--roles legend { float: left; width: 100%; margin-bottom: 8px; }
+  .field--roles .field__error { flex-basis: 100%; }
   .radio { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--ink-muted); }
   .radio input { accent-color: var(--signal); }
 
@@ -397,13 +414,23 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
 </style>
 
 <script>
-  import { localTime } from '../lib/exchanges';
   import { COMPANY, FORM } from '../data/content';
 
   /* Live Sofia clock — direct init, no lifecycle gate. */
   const clock = document.querySelector<HTMLElement>('[data-channel-clock]');
+  /* Seconds, because the placeholder promises three groups and the interval
+     is one second; and the zone name, because it was hard-coded. */
+  const zone = document.querySelector<HTMLElement>('[data-channel-zone]');
   if (clock) {
-    const tick = () => { clock.textContent = localTime(COMPANY.tz); };
+    const timeFmt = new Intl.DateTimeFormat('en-GB', {
+      timeZone: COMPANY.tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+    });
+    const zoneFmt = new Intl.DateTimeFormat('en-GB', { timeZone: COMPANY.tz, timeZoneName: 'short' });
+    const tick = () => {
+      const now = new Date();
+      clock.textContent = timeFmt.format(now);
+      if (zone) zone.textContent = zoneFmt.formatToParts(now).find((p) => p.type === 'timeZoneName')?.value ?? '';
+    };
     tick();
     let timer = window.setInterval(tick, 1000);
     document.addEventListener('visibilitychange', () => {
@@ -451,8 +478,13 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
     if (label) label.textContent = on ? 'Sending.' : 'Send';
   };
 
-  const field = (name: string) =>
-    form?.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
+  /* A radio group comes back as a RadioNodeList; its first radio stands in
+     for the group wherever an element is needed (focus, aria-invalid). */
+  const field = (name: string): HTMLInputElement | HTMLTextAreaElement | null => {
+    const item = form?.elements.namedItem(name) ?? null;
+    if (item instanceof RadioNodeList) return (item.item(0) as HTMLInputElement | null) ?? null;
+    return item as HTMLInputElement | HTMLTextAreaElement | null;
+  };
 
   const errorFor = (name: string) =>
     form?.querySelector<HTMLElement>(`[data-error-for="${name}"]`) ?? null;
@@ -475,7 +507,13 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
     el.setAttribute('aria-invalid', 'true');
     el.focus();
     // Clear on the next edit, or a fixed field keeps reporting the old fault.
-    el.addEventListener('input', () => clearError(name), { once: true });
+    // A radio group clears on a change to any of its radios, not only the one
+    // that took focus.
+    const radio = el.type === 'radio';
+    const nodes = radio
+      ? Array.from(form?.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`) ?? [])
+      : [el];
+    nodes.forEach((node) => node.addEventListener(radio ? 'change' : 'input', () => clearError(name), { once: true }));
     return true;
   }
 
@@ -516,11 +554,11 @@ const turnstileKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
     // Clear anything left over from a previous submit, or a now-valid field
     // keeps reporting the old complaint.
-    for (const key of ['name', 'email', 'message', 'consent']) clearError(key);
-
+    for (const key of ['name', 'email', 'role', 'message', 'consent']) clearError(key);
     if (!name) return void complain('name', FORM.nameRequired);
     if (!email) return void complain('email', FORM.emailRequired);
     if (!field('email')?.validity.valid) return void complain('email', FORM.emailInvalid);
+    if (!role) return void complain('role', FORM.roleRequired);
     if (!message) return void complain('message', FORM.messageRequired);
     // Last, so the visitor is not asked to agree to sending something they have
     // not finished writing.

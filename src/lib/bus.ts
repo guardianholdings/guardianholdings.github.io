@@ -9,6 +9,8 @@ export type BusEvents = {
   /** Motion runtime finished building for this document. */
   'page:load': void;
   'sound:toggle': boolean;
+  /** Fly the camera to the element with this id and put focus in it. */
+  'goto': string;
 };
 
 type Handler<T> = (payload: T) => void;

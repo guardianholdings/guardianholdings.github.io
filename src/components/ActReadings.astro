@@ -28,7 +28,7 @@ const NEEDLE = [0.78, 0.86, 0.92, 0.7];
           <span class="readout reading__idx">{String(i + 1).padStart(3, '0')}</span>
 
           <div class="reading__body">
-            <h4 class="reading__title">{item.title}</h4>
+            <h3 class="reading__title">{item.title}</h3>
             <p class="reading__line">{item.line}</p>
           </div>
 
@@ -55,11 +55,33 @@ const NEEDLE = [0.78, 0.86, 0.92, 0.7];
         </li>
       ))}
     </ol>
+    {/* The founder's one call to action, made actionable. The page has no
+        navigation and a hash link cannot reach an act inside the fixed shaft,
+        so the button asks app.ts — which owns the smooth scroller — to fly
+        the camera to the form and put focus in its first field once that act
+        is in frame. It sits under the four needles, so it arrives after the
+        reader has taken them, and one act before Hands says what writing
+        gets you. */}
+    <p class="readings__cta">
+      <button class="door" type="button" data-goto="field-name" data-cursor-label="Write">
+        <span>Write to us</span>
+        <svg viewBox="0 0 24 8" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square" aria-hidden="true">
+          <path d="M0 4h22M18 .5L22 4l-4 3.5" />
+        </svg>
+      </button>
+    </p>
   </div>
 </section>
+<script>
+  import { bus } from '../lib/bus';
+  document.querySelectorAll<HTMLButtonElement>('[data-goto]').forEach((btn) => {
+    btn.addEventListener('click', () => bus.emit('goto', btn.dataset.goto ?? ''));
+  });
+</script>
 
 <style>
   .readings__list { list-style: none; margin: 0; padding: 0; }
+  .readings__cta { margin: clamp(28px, 3.5vw, 48px) 0 0; }
 
   .reading {
     display: grid;

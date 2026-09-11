@@ -21,10 +21,20 @@ export const COMPANY = {
   street: "Simeonovsko Shose 33, fl. 3",
   city: "Sofia",
   country: "Bulgaria",
-  lat: "42.6977",
-  lon: "23.3219",
-  coords: "42.6977° N · 23.3219° E",
+  /** The office, not the city. 42.6977 / 23.3219 was Sofia's reference point
+      (Dondukov Blvd, 5 km north of the door), printed under "Locate" beside
+      the street address and declared as the schema geo. Geocoded from the
+      address (OpenStreetMap, 2026-09-11). */
+  lat: "42.6536",
+  lon: "23.3364",
+  coords: "42.6536° N · 23.3364° E",
   tz: "Europe/Sofia",
+  /** Commercial Register (Търговски регистър) UIC / ЕИК. Bulgarian Commerce
+      Act Art. 13 asks a trader's website to carry name, seat and UIC, and it
+      is the one fact on the page a counterparty can check in a register. */
+  uic: "208613644",
+  /** Registration date, as the register gives it. */
+  founded: "2025-12-12",
 } as const;
 
 export const META = {
@@ -79,7 +89,12 @@ export const PHILOSOPHY = {
   statement:
     "We hear it while it is quiet, and we are still holding it when it is loud.",
   lede: "Most capital is in a hurry. Ours is not. We would rather read a business, a commodity cycle or a building slowly and act rarely than take a position on a story that broke last week.",
-  body: "We cover very little on purpose. 3 asset classes, 4 sectors, and nothing outside them. Every position ends in a written case, not a conversation. The same people who commit the capital are still in the room a year later.",
+  /** One sentence, and one the principles below do not already say. The four
+      it replaced were each said elsewhere: "very little, on purpose" and
+      "nothing outside them" were the previous act's opener; the written case
+      is in acts 03, 05, 06, 07 and 08; "the people who commit the capital show
+      up" is act 05's close and act 08's third standing order. */
+  body: "A position is taken when a business starts to move for the reasons we set out, and it is held until those reasons stop being true.",
   /** "Four" stays spelled here — a locked exception to the digits rule,
       because "4 principles" reads as a spec line. Do not "fix" it later. */
   principlesHeading: "Four principles we do not trade away.",
@@ -108,12 +123,15 @@ export const PROCESS = {
   word: "Process",
   kicker: "Process · 4 steps",
   heading: "One chain, and the last step is our own name.",
-  lede: "The same four steps for a listed position, a minority stake or a building. What changes is the pace, not the order.",
+  lede: "The same 4 steps for a listed position, a minority stake or a building. What changes is the pace, not the order.",
   steps: [
     {
       name: "Sourcing",
       readout: "Hear",
-      line: "We keep a network in Finance, Technology and Defence. We read the 6 exchanges every trading day. Most days we buy nothing.",
+      /** Not "Finance, Technology and Defence": those are the three DESKS,
+          which the reader only meets at act 08. Two acts after the four
+          sectors were named it read as a rival list with Commodities missing. */
+      line: "We keep a network across all 4 sectors. We read the 6 exchanges every trading day. Most days we buy nothing.",
     },
     {
       name: "Analysis",
@@ -130,7 +148,10 @@ export const PROCESS = {
           regulated MiFID service, and it was sitting on a founder-facing act. */
       name: "Ownership",
       readout: "Hold",
-      line: "The people who commit the capital show up afterwards. Liquid and real-asset positions are reviewed continuously, not quarterly.",
+      /** "The people who commit the capital show up afterwards" is act 08's
+          third standing order, word for word, and act 05's close; it lives
+          there. And it is every position, not two classes of three. */
+      line: "Every position, listed, private or a building, is reviewed continuously, not quarterly, by the desk that committed it.",
     },
   ],
 } as const;
@@ -139,7 +160,11 @@ export const PROCESS = {
 export const READINGS = {
   word: "Readings",
   kicker: "For founders · What we look for",
-  text: "We take 4 readings of a business before we hold any of it. Take them yourself first, on your own numbers. You already know the answers. If all 4 needles point the right way, write to us.",
+  /** "before we commit to it", not "before we hold any of it": act 06 names,
+      as held, a licensed broker of military equipment and a law firm, which
+      fail reading 001 on sight. The readings are what a founder is tested
+      against, not a claim about every position on the book. */
+  text: "We take 4 readings of a founder's business before we commit to it. Take them yourself first, on your own numbers. You already know the answers. If all 4 needles point the right way, write to us.",
   /** The act's one permitted conditional is spent in the text above. The four
       lines are conditional-free so they read as tests, not invitations. */
   items: [
@@ -149,7 +174,7 @@ export const READINGS = {
     },
     {
       title: "Scalable operations",
-      line: "Your revenue grows faster than your payroll does. Twice the customers don't need twice the people.",
+      line: "Your revenue grows faster than your payroll does. Twice the customers do not need twice the people.",
     },
     {
       title: "High growth potential",
@@ -157,7 +182,7 @@ export const READINGS = {
     },
     {
       title: "Capital efficient",
-      line: "You've grown this far on cash the business made itself. New money buys speed here, not survival.",
+      line: "You have grown this far on cash the business made itself. New money buys speed here, not survival.",
     },
   ],
 } as const;
@@ -169,7 +194,7 @@ export const READINGS = {
     sentiment, and this act is what stops the whole concept collapsing into it. */
 export const PROVIDE = {
   word: "Hands",
-  kicker: "Six functions · One desk",
+  kicker: "6 functions · One desk",
   text: "The money arrives with the hands to use it. Product, design, sales, people, infrastructure and finance sit at the desk that committed the capital. The same people show up on Monday.",
   functions: [
     {
@@ -219,18 +244,20 @@ export const PROVIDE = {
 export const PORTFOLIO = {
   word: "Held",
   kicker: "Chart · Sector × Asset class",
-  text: "A founder decides when their investor becomes public information. We don't announce it first. The names below are here because the people behind them cleared it. What each company does is on this page; how it is doing is theirs to say.",
-  heading: "12 cells. We hold nothing outside them.",
+  text: "A founder decides when their investor becomes public information. We do not announce it first. The names below are here because the people behind them cleared it. What each company does is on this page; how it is doing is theirs to say.",
+  heading: "12 cells. Each name is plotted where it sits.",
   /** Without this the act is composed entirely of things we do not say, and
       restraint with no work behind it reads as evasion. */
-  body: "A position starts as a written case: what the business earns, what it costs to run, what breaks it. Nothing is committed on a conversation. We look for online-first businesses that are capital-efficient before they are large.",
+  body: "A position starts with what the business earns, what it costs to run and what breaks it. Nothing is committed on a conversation.",
   namesHeading: "Names published with permission.",
-  namesLede: "Each name below sits in one of the cells above. The liquid-market and real-estate books sit in the same 12 cells and are not itemised here.",
+  /** The "not itemised" caveat lives in `note` (visible) and `desc` (read
+      aloud) and nowhere else; this used to be its third appearance. */
+  namesLede: "Sector and class first; then the name, and what it does.",
   note: "Point positions are illustrative within each cell. The plot names private-equity positions; the liquid-market and real-estate books are covered, not itemised.",
   /** Deliberately "named", not "plotted": under a sector filter the liquid and
       real-estate rows return nothing, and "nothing held here" would be false. */
   empty: "No named position in this view.",
-  desc: "A grid of four sector columns and three asset-class rows. Each plotted point is a named private-equity position; the liquid-market and real-estate books are covered but not itemised.",
+  desc: "A grid of 4 sector columns and 3 asset-class rows. Each plotted point is a named private-equity position; the liquid-market and real-estate books are covered but not itemised.",
   classes: ["Liquid markets", "Private equity", "Real estate"],
   sectors: ["Defence", "Commodities", "Tech", "Financial services"],
   /** ref (plot id and jitter seed), sector index (0-3), class index (0-2).
@@ -296,10 +323,12 @@ export const ADVISORY = {
   kicker: "Mandate · Separately managed accounts",
   text: "Guardian Holdings JSC defines 4 strategies. Each runs under a discretionary mandate, in a single account. Nothing is pooled. The reading is ours; the account is not.",
   heading: "An account in your own name, read the way we read our own.",
-  lede: "A separately managed account is opened in your own name. Every position in it is visible to you. The minimum is EUR 100,000, per account and per mandate — below that, the arrangement is not worth its own paperwork.",
+  lede: "Every position in it is visible to you. The minimum is EUR 100,000, per account and per mandate; below that, the arrangement is not worth its own paperwork.",
   facts: [
     { value: "€100K", label: "Minimum investment", note: "Per account, per mandate" },
-    { value: "4", label: "Core strategies", note: "Alone or combined" },
+    /** "Strategies", not "Core strategies": "core" implies a periphery, and
+        six lines down the heading says the list is closed. */
+    { value: "4", label: "Strategies", note: "Alone or combined" },
     /** Previously named the Bulgarian supervisor. Naming a regulator beside
         Guardian's own name implies Guardian is the supervised entity. */
     { value: "EU", label: "Where it is held", note: "With a licensed intermediary" },
@@ -329,12 +358,12 @@ export const ADVISORY = {
           than the same fact found later. */
       title: "Private Equity",
       tag: "Private markets · Illiquid",
-      line: "Direct positions in unlisted companies across the same 4 sectors, read the way we read one for our own book. There is no daily price to sell.",
+      line: "Direct positions in unlisted companies across the same 4 sectors. There is no daily price to sell.",
     },
   ],
   regulationHeading: "Who holds the account.",
   regulation:
-    "We define the strategies. The account is opened with, and the mandate carried out by, EU licensed investment intermediaries. MiFID II names that service individual portfolio management. Nothing in your account funds anything of ours.",
+    "We define the strategies. The account is opened with, and the mandate carried out by, EU licensed investment intermediaries. MiFID II names that service portfolio management: mandates carried out on a discretionary, client-by-client basis. Nothing in your account funds anything of ours.",
   /** Full size, its own block, never fine print. The last sentence names the
       actor: under MiFID the assessment is performed by the firm providing the
       service, so an actorless passive on Guardian's page reads as *we assess it*. */
@@ -346,7 +375,7 @@ export const WATCH = {
   word: "The watch",
   kicker: "Team · Who keeps the watch",
   text: "Guardian Holdings JSC keeps 3 desks: Finance, Technology and Defence. We list the roster by post rather than by name. Nobody here holds a post they do not work. That is the whole credential.",
-  heading: "Three desks. One watch.",
+  heading: "3 desks. One watch.",
   lede: "We keep the watch from Sofia. Each desk below is listed by the posts it holds, not by the people who hold them. The same 3 standing orders bind every desk. A post is checkable; a biography is not.",
   /** Renamed from `theatres`: surveillance cosplay, and it reads worse, not
       better, next to a real Defence sector. */
@@ -361,12 +390,17 @@ export const WATCH = {
       name: "Technology",
       bearing: "120°",
       line: "Staffs the 6 operating functions. Sits on the calls that follow an investment. Does the work a founder has no one on payroll for. The hands are here.",
-      posts: ["Product & engineering", "Design & marketing", "Go-to-market"],
+      /** The six posts ARE the six functions of act 05, by name. The desk
+          says it staffs them; a roster with three different names did not. */
+      posts: ["Product & business analysis", "Design & marketing", "BizDev & sales", "HR & legal", "IT & DevOps", "Finance & strategy"],
     },
     {
       name: "Defence",
       bearing: "240°",
-      line: "Follows a European sector where the public record is quiet. Covers government and industry, where the terrain moves slowly. Policy is read before price.",
+      /** A doing sentence in the middle: the other two desks each name work
+          performed, and three listening verbs beside a licensed arms broker
+          read as "where nobody can check". */
+      line: "Follows a European sector where the public record moves slowly. Sits on the licensing and export questions a founder in it cannot afford to get wrong. Policy is read before price.",
       posts: ["Industry advisory", "Government & policy"],
     },
   ],
@@ -404,7 +438,7 @@ export const CHANNEL = {
   /** The site's one sanctioned question mark. */
   footerAsk: "Built something, and nobody has heard it yet?",
   footerPara:
-    "Founders first. Tell us what you built and it reaches the people who invest and then do the work. Investors reach the mandate: EUR 100,000, in your own name.",
+    "Founders: tell us what you built and it reaches the people who invest and then do the work. Investors: the mandate, EUR 100,000, in your own name.",
   brandLine:
     "Guardian Holdings JSC is a private investment company in Sofia. We hold positions in liquid markets, private equity and real estate, across 4 sectors and nothing outside them.",
   /** The background recording is used under CC BY-SA 4.0, which requires
@@ -414,7 +448,12 @@ export const CHANNEL = {
       credit and the thing it credits appear and vanish together.
       public/audio/LICENCE.txt holds the full terms and the source. */
   soundCredit: {
-    text: "Sound · Mozart, Lacrimosa, transcribed by Thalberg. Performed by Lệ Xuân.",
+    text: "Sound · Mozart, Lacrimosa, transcribed by Thalberg. Performed by",
+    /** Linked to the recording's own page: CC BY-SA 4.0 §3(a)(1)(A)(iv) asks
+        for a link to the licensed material where practicable, and the credit
+        used to link only to the licence. */
+    performer: "Lệ Xuân",
+    sourceHref: "https://commons.wikimedia.org/wiki/File:Mozart,_Requiem_in_D_minor,_%27Lacrimosa%27_%E2%80%93_piano_arrangement.ogg",
     licence: "CC BY-SA 4.0",
     href: "https://creativecommons.org/licenses/by-sa/4.0/",
   },
@@ -430,7 +469,11 @@ export const CHANNEL = {
 export const FORM = {
   nameRequired: "A name is required.",
   emailRequired: "An email address is required.",
-  emailInvalid: "That address will not reach us.",
+  /** The address is where the REPLY goes; a bad one does not stop the message
+      reaching the desk. The Worker says the same words for the same fault. */
+  emailInvalid: "A reply cannot reach that address.",
+  /** No default role. Mirrored in the Worker for the no-JS POST. */
+  roleRequired: "Say which you are: a founder or an investor.",
   messageRequired: "A message is required.",
   /** The consent tick. There is no cookie banner on this site by decision, so
       this box is the ONE place a visitor agrees to anything, and it covers only
@@ -453,7 +496,9 @@ export const FORM = {
     HELD in the readout and PORTFOLIO on the page has caught the instrument
     lying. The ids are load-bearing and never change. */
 export const ACTS = [
-  { id: "carrier", label: "Carrier" },
+  /** The hero has no opener; its display words are "Guardian" / "Holdings",
+      so the readout says the first of them. "Carrier" was on no screen. */
+  { id: "carrier", label: "Guardian" },
   { id: "universe", label: "Universe" },
   { id: "philosophy", label: "Resonance" },
   { id: "process", label: "Process" },
@@ -461,8 +506,8 @@ export const ACTS = [
   { id: "provide", label: "Hands" },
   { id: "portfolio", label: "Held" },
   { id: "advisory", label: "Mandate" },
-  { id: "watch", label: "Watch" },
-  { id: "channel", label: "Channel" },
+  { id: "watch", label: "The watch" },
+  { id: "channel", label: "Contact" },
 ] as const;
 
 export const ACT_COUNT = ACTS.length;

@@ -35,6 +35,10 @@ const glyphs = (word: string) =>
 
     <h1 class="carrier__title" id="carrier-title">
       <span class="h-hero carrier__word carrier__word--a" data-anim="scramble" data-scramble-hot={HOT} style={`--word-fit:${fit(HERO.words[0])}`}>{glyphs(HERO.words[0]).map(({ ch, hot }) => (hot ? <span class="hot-glyph">{ch}</span> : ch))}</span>
+      {/* Astro's compressor drops the whitespace between the two lines, so the
+          page's only h1 read as one token, "GuardianHoldings", to every
+          crawler and screen reader. An expression is not compressed. */}
+      <span class="sr-only">{' '}</span>
       <span class="h-hero carrier__word carrier__word--b" data-anim="scramble" data-scramble-hot={HOT} style={`--word-fit:${fit(HERO.words[1])}`}>{glyphs(HERO.words[1]).map(({ ch, hot }) => (hot ? <span class="hot-glyph">{ch}</span> : ch))}</span>
     </h1>
 

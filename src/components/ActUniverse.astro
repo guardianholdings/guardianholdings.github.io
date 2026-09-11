@@ -6,6 +6,13 @@
  */
 import SectionOpener from './SectionOpener.astro';
 import { UNIVERSE } from '../data/content';
+import { EXCHANGES } from '../lib/exchanges';
+
+/* "6 exchanges" is asserted seven times on the property and the six were
+   named only in tooltip attributes inside an aria-hidden HUD. Named here for
+   the reader who cannot see the instrument. */
+const cities = EXCHANGES.map((e) => e.city);
+const exchangeList = `${cities.slice(0, -1).join(', ')} and ${cities[cities.length - 1]}`;
 ---
 <section class="act universe" id="universe" data-act="1" aria-labelledby="universe-title">
   <div class="stage" data-tunnel>
@@ -23,7 +30,7 @@ import { UNIVERSE } from '../data/content';
           <span class="readout universe__idx">{String(i + 1).padStart(3, '0')}</span>
           <span class="num universe__value" data-anim="counter">{stat.value}</span>
           <span class="mono universe__label">{stat.label}</span>
-          <span class="universe__note">{stat.note}</span>
+          <span class="universe__note">{stat.note}{i === 2 && <span class="sr-only">{`: ${exchangeList}`}</span>}</span>
         </li>
       ))}
     </ul>
@@ -46,8 +53,10 @@ import { UNIVERSE } from '../data/content';
           {UNIVERSE.matrix.classes.map((klass) => (
             <tr>
               <th scope="row" class="mono matrix__row-head">{klass}</th>
+              {/* The caption promises a table; a screen reader heard twelve
+                  blank cells. The word is the cell's value. */}
               {UNIVERSE.matrix.sectors.map(() => (
-                <td class="matrix__cell"><i class="sq sq--signal"></i></td>
+                <td class="matrix__cell"><i class="sq sq--signal" aria-hidden="true"></i><span class="sr-only">Covered</span></td>
               ))}
             </tr>
           ))}

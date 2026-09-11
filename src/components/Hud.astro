@@ -12,7 +12,10 @@
 import { COMPANY, ACTS, ACT_COUNT } from '../data/content';
 import { EXCHANGES } from '../lib/exchanges';
 ---
-<div class="hud" aria-hidden="true">
+{/* data-nosnippet: aria-hidden hides this from screen readers, not from a
+    search engine, and the first 150 characters of body text on the site were
+    these placeholders — which is what a snippet falls back to. */}
+<div class="hud" aria-hidden="true" data-nosnippet>
   <div class="hud__row hud__row--top gh-reground">
     <span class="hud__cell">Guardian Holdings JSC</span>
     {/* Sofia is the disambiguator — the only local-intent token in the readout,
@@ -20,7 +23,7 @@ import { EXCHANGES } from '../lib/exchanges';
         insurer. At narrow widths the coordinates drop and the city stays. */}
     <span class="hud__cell hud__cell--dim">{COMPANY.city}<span class="hud__coords"> · {COMPANY.coords}</span></span>
     <span class="hud__spacer"></span>
-    <span class="hud__cell" data-hud="sofia">SOF --:--:--</span>
+    <span class="hud__cell" data-hud="sofia">SOF --:--</span>
     <span class="hud__cell hud__cell--dim" data-hud="utc">UTC --:--</span>
   </div>
 
@@ -142,6 +145,10 @@ import { EXCHANGES } from '../lib/exchanges';
      the field is using as its wave shape. It is a readout, not an equaliser
      animation: with the sound off it still shows exactly what is ringing. */
   .hud__res { display: inline-flex; align-items: center; gap: 8px; }
+  /* The three cells that carry an explanation in `title` take the pointer, so
+     the tooltips can actually be read. The HUD root stays pointer-events:none
+     so the page beneath keeps receiving clicks everywhere else. */
+  .hud__markets, .hud__res, .hud__snr { pointer-events: auto; }
   .hud__modes {
     display: inline-flex;
     align-items: flex-end;

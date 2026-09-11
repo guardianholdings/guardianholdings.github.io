@@ -436,3 +436,39 @@ describe('nextChange', () => {
     }
   });
 });
+
+describe('holidays (the `closed` list in exchanges.json)', () => {
+  it('Christmas Day 2026: New York is closed and reopens Monday 28th', () => {
+    const s = getStatus(NYC, at('2026-12-25T15:00:00Z')); // Fri 10:00 EST
+    expect(s.state).toBe('closed');
+    expect(s.nextChangeKind).toBe('opens');
+    expect(s.nextChangeIn).toBe(3 * 24 * 60 - 30); // Mon 09:30 EST = 14:30Z
+  });
+  it('Boxing Day substitute 2026-12-28: London is closed and reopens Tuesday', () => {
+    const s = getStatus(LON, at('2026-12-28T10:00:00Z'));
+    expect(s.state).toBe('closed');
+    expect(s.nextChangeIn).toBe(22 * 60); // Tue 08:00 GMT
+  });
+  it('Tokyo year end: closed on 31 December, reopens 4 January', () => {
+    const s = getStatus(TYO, at('2026-12-31T01:00:00Z')); // Thu 10:00 JST
+    expect(s.state).toBe('closed');
+    expect(s.nextChangeIn).toBe(4 * 24 * 60 - 60); // Mon 2027-01-04 09:00 JST = 00:00Z
+  });
+  it('a plain weekday between holidays is untouched', () => {
+    expect(getStatus(NYC, at('2026-12-23T15:00:00Z')).state).toBe('open');
+    expect(getStatus(FRA, at('2026-12-23T10:00:00Z')).state).toBe('open');
+  });
+  it('every closed date is a weekday, well formed and sorted', () => {
+    for (const ex of EXCHANGES) {
+      const list = ex.closed ?? [];
+      expect(list.length).toBeGreaterThan(0);
+      expect([...list].sort()).toEqual(list);
+      for (const d of list) {
+        expect(d).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        const dow = new Date(`${d}T12:00:00Z`).getUTCDay();
+        expect(dow).not.toBe(0);
+        expect(dow).not.toBe(6);
+      }
+    }
+  });
+});

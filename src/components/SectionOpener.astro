@@ -31,14 +31,25 @@ const pad = (n: number) => String(n).padStart(2, '0');
 <header class:list={["opener", compact && "opener--compact"]} data-depth style="--depth:-110px">
   <hr class="rule rule--strong" />
 
-  <h2 class="opener__word display-word" id={id} data-anim="word" style={`--word-fit:${fit}`}>{word}</h2>
+  {/* The animation hook sits on an inner span so the heading can also carry
+      the kicker as hidden text. The visible outline of this page is nine
+      display words, four of which ("Readings", "Hands", "Held", "The watch")
+      name nothing without the visuals; a crawler or a screen reader now gets
+      "Readings · For founders · What we look for". SplitText writes its own
+      aria-label onto the element it splits, which is why the hidden text
+      cannot live inside the animated span. One line: the compressor drops
+      whitespace-only text between tags, and this heading must not gain one. */}
+  <h2 class="opener__word display-word" id={id} style={`--word-fit:${fit}`}><span data-anim="word">{word}</span><span class="sr-only">{` · ${kicker}`}</span></h2>
 
   <div class="opener__meta">
     <p class="mono-para" data-anim="lines">{text}</p>
     <div class="opener__right">
       <p class="eyebrow" data-anim="scramble">{kicker}</p>
       <p class="readout opener__index">
-        Act {pad(index)} / {pad(ACT_COUNT)}
+        {/* index is the act's data-act, 0-based like the HUD's; the HUD prints
+            index + 1. Printing the raw index put "Act 01" on this line beside
+            a HUD reading 02 on every act, and the page never reached 09. */}
+        Act {pad(index + 1)} / {pad(ACT_COUNT)}
       </p>
     </div>
   </div>

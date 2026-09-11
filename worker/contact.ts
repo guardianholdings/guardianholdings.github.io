@@ -36,6 +36,10 @@ const LIMITS = { name: 120, email: 200, message: 5000 } as const;
 /** A form filled faster than this was not filled by a person. */
 const MIN_FILL_MS = 2_000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** The address the site publishes (COMPANY.email in src/data/content.ts).
+    CONTACT_TO is where the enquiry is delivered and is nobody's business but
+    the desk's; every string a visitor sees names this one instead. */
+const PUBLISHED_ADDRESS = 'contact@guardianholdingsjsc.com';
 
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
@@ -142,7 +146,7 @@ function acknowledgement(name: string, message: string, to: string): string {
 Thank you — your message reached us.
 
 Every message is read by a principal, not a mailbox. It lands on the desk that
-does the work itself. Yes or no, you get a written answer with the reason.
+does the work itself, and the reply comes from there.
 
 You can reply to this email directly; it reaches the same desk.
 
@@ -158,7 +162,9 @@ https://guardianholdingsjsc.com`;
 }
 
 export async function handleContact(request: Request, env: ContactEnv): Promise<Response> {
-  // A health check, so a deploy can be verified without sending mail.
+  // A health check, so a deploy can be verified without sending mail. It
+  // names no address: this URL is public, and CONTACT_TO is a mailbox the
+  // site itself does not print.
   if (request.method === 'GET') {
     return json(
       {
@@ -168,7 +174,6 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
         botCheck: Boolean(env.TURNSTILE_SECRET),
         rateLimited: typeof env.CONTACT_LIMIT?.limit === 'function',
         hasIp: Boolean(request.headers.get('cf-connecting-ip')),
-        to: env.CONTACT_TO,
       },
       200,
     );
@@ -255,7 +260,17 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
       'Nothing was sent.',
     );
   }
-  if (!EMAIL_RE.test(email)) return fail('That address will not reach you.', 400);
+  if (!EMAIL_RE.test(email)) return fail('A reply cannot reach that address.', 400);
+
+  /* A role is picked, not defaulted. The form used to pre-tick "A founder", so
+     a visitor who skipped the row was filed as one; the page now ships the
+     radios unchecked, and this is the no-JS half of the same rule. Same words
+     as FORM.roleRequired. */
+  const roleRaw = clean(data.role);
+  const isInvestor = /investor/i.test(roleRaw);
+  if (!isInvestor && !/founder/i.test(roleRaw)) {
+    return fail('Say which you are: a founder or an investor.', 400);
+  }
   if (name.length > LIMITS.name || email.length > LIMITS.email || message.length > LIMITS.message) {
     return fail('That message is too long to send.', 413);
   }
@@ -267,13 +282,12 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
     return asPage
       ? page(
           'Write to us directly.',
-          `This form is not connected to a mailbox yet. Send your message to ${env.CONTACT_TO} and it reaches the same desk.`,
+          `This form is not connected to a mailbox yet. Send your message to ${PUBLISHED_ADDRESS} and it reaches the same desk.`,
           503,
         )
       : json({ ok: false, unconfigured: true }, 503);
   }
 
-  const isInvestor = /investor/i.test(clean(data.role));
   const role = isInvestor ? 'An investor' : 'A founder';
 
   // 1. The enquiry. If this does not go, nothing else matters.
@@ -294,7 +308,7 @@ export async function handleContact(request: Request, env: ContactEnv): Promise<
     to: [email],
     reply_to: [env.CONTACT_TO],
     subject: 'Guardian Holdings JSC — your message',
-    text: acknowledgement(name, message, env.CONTACT_TO),
+    text: acknowledgement(name, message, PUBLISHED_ADDRESS),
   });
   if (!acked) console.error('acknowledgement failed for', email);
 

@@ -18,6 +18,10 @@ export type HHMM = `${number}:${number}` | string;
 export interface Exchange {
   id: string; code: string; city: string; exchange: string; tz: string;
   sessions: [HHMM, HHMM][]; days: number[];
+  /** Non-trading dates, ISO YYYY-MM-DD in the exchange's own zone: public
+      holidays and exchange closures. Weekends are `days`; this is the rest.
+      Listed through 2027 in exchanges.json — renew it each autumn. */
+  closed?: string[];
 }
 export type MarketState = 'open' | 'lunch' | 'pre-open' | 'closed';
 export interface ExchangeStatus {
@@ -48,13 +52,29 @@ function getFormatter(tz: string): Intl.DateTimeFormat {
 }
 export function toMinutes(hhmm: string): number { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; }
 
+const dateFmtCache = new Map<string, Intl.DateTimeFormat>();
+/** The calendar date at `now` in the zone, as YYYY-MM-DD (en-CA prints it so). */
+export function zonedDate(tz: string, now: Date = new Date()): string {
+  let f = dateFmtCache.get(tz);
+  if (!f) { f = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }); dateFmtCache.set(tz, f); }
+  return f.format(now);
+}
+/** True when the exchange lists the day `daysAhead` days from the zoned today as closed. */
+function closedOn(ex: Exchange, now: Date, daysAhead = 0): boolean {
+  if (!ex.closed || ex.closed.length === 0) return false;
+  const probe = daysAhead === 0 ? now : new Date(now.getTime() + daysAhead * MINUTES_PER_DAY * 60_000);
+  return ex.closed.includes(zonedDate(ex.tz, probe));
+}
+
 /* ------------------------------------------------------------------ */
 /* Private helpers                                                     */
 /* ------------------------------------------------------------------ */
 
 const MINUTES_PER_DAY = 24 * 60;
 const PRE_OPEN_WINDOW = 30;
-const LOOKAHEAD_DAYS = 7;
+/* Fourteen, not seven: a holiday run beside a weekend (Tokyo's year end, the
+   Lunar New Year) can push the next open past a week. */
+const LOOKAHEAD_DAYS = 14;
 
 interface Session { start: number; end: number }
 
@@ -98,7 +118,7 @@ function minutesUntilNextTradingOpen(ex: Exchange, now: Date, weekday: number, c
   const sessions = sessionsOf(ex);
   if (sessions.length === 0 || ex.days.length === 0) return null;
   for (let d = 1; d <= LOOKAHEAD_DAYS; d++) {
-    if (ex.days.includes((weekday + d) % 7)) {
+    if (ex.days.includes((weekday + d) % 7) && !closedOn(ex, now, d)) {
       return minutesUntilWallClock(ex.tz, now, currentMinutes, d, sessions[0].start);
     }
   }
@@ -116,14 +136,15 @@ function minutesUntilNextTradingOpen(ex: Exchange, now: Date, weekday: number, c
  *   'pre-open'  within 30 minutes before the day's first session,
  *   'closed'    otherwise (incl. non-trading days).
  * nextChangeIn / nextChangeKind walk today's remaining boundaries, then up to
- * seven days ahead to the next trading day's first open (holidays ignored).
+ * fourteen days ahead to the next trading day's first open, skipping the dates
+ * each exchange lists as closed (public holidays, in exchanges.json).
  */
 export function getStatus(ex: Exchange, now: Date = new Date()): ExchangeStatus {
   const { weekday, minutes } = zonedNow(ex.tz, now);
   const sessions = sessionsOf(ex);
   const base = { exchange: ex, localMinutes: minutes };
 
-  if (sessions.length > 0 && ex.days.includes(weekday)) {
+  if (sessions.length > 0 && ex.days.includes(weekday) && !closedOn(ex, now)) {
     const first = sessions[0];
 
     for (let i = 0; i < sessions.length; i++) {
