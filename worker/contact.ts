@@ -39,7 +39,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** The address the site publishes (COMPANY.email in src/data/content.ts).
     CONTACT_TO is where the enquiry is delivered and is nobody's business but
     the desk's; every string a visitor sees names this one instead. */
-const PUBLISHED_ADDRESS = 'contact@guardianholdingsjsc.com';
+const PUBLISHED_ADDRESS = 'info@guardianholdingsjsc.com';
 
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {

@@ -17,7 +17,7 @@
 
 export const COMPANY = {
   name: "Guardian Holdings JSC",
-  email: "contact@guardianholdingsjsc.com",
+  email: "info@guardianholdingsjsc.com",
   street: "Simeonovsko Shose 33, fl. 3",
   city: "Sofia",
   country: "Bulgaria",
